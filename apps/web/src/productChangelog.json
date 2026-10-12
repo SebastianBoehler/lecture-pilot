@@ -2,6 +2,63 @@
   "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
   "releases": [
     {
+      "version": "0.9.0",
+      "date": "2026-10-12",
+      "title": {
+        "en": "Simpler generation and course sharing",
+        "de": "Einfachere Generierung und Kursfreigabe"
+      },
+      "summary": {
+        "en": "Course creation now uses bounded generation steps, preserves saved work, and shows review findings for lecturer decisions. Course links make sharing easier.",
+        "de": "Die Kurserstellung nutzt begrenzte Generierungsschritte, erhält gespeicherte Arbeit und zeigt Prüfhinweise für die Entscheidung der Lehrenden. Kurslinks erleichtern das Teilen."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "Bounded generation with review notes",
+            "de": "Begrenzte Generierung mit Prüfhinweisen"
+          },
+          "description": {
+            "en": "Learning goals, teaching tasks and lecture sections use fixed generation steps with targeted repairs. Remaining model review findings appear as warnings; structural checks still protect the draft.",
+            "de": "Lernziele, Übungsaufgaben und Vorlesungsabschnitte entstehen in festen Schritten mit gezielten Reparaturen. Verbleibende Modellhinweise erscheinen als Warnungen; strukturelle Prüfungen schützen weiterhin den Entwurf."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Draft and publish lectures independently",
+            "de": "Vorlesungen einzeln erstellen und veröffentlichen"
+          },
+          "description": {
+            "en": "Draft generation starts when a lecture’s learning goals are approved. Approved drafts can be published while other lectures are still being prepared. Interrupted generation shows a resume action.",
+            "de": "Die Entwurfserstellung startet nach der Freigabe der Lernziele einer Vorlesung. Freigegebene Entwürfe können veröffentlicht werden, während andere Vorlesungen noch entstehen. Unterbrochene Generierungen zeigen eine Aktion zum Fortsetzen."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Share courses with links and QR codes",
+            "de": "Kurse mit Links und QR-Codes teilen"
+          },
+          "description": {
+            "en": "Share the course link, QR code or slide image. Enrollment remains required unless the lecturer explicitly enables a revocable join link.",
+            "de": "Kurslink, QR-Code oder Folienbild teilen. Die Einschreibung bleibt erforderlich, sofern die Lehrperson nicht ausdrücklich einen widerrufbaren Beitrittslink aktiviert."
+          }
+        },
+        {
+          "title": {
+            "en": "Clear session expiry notices",
+            "de": "Klare Hinweise bei abgelaufenen Sitzungen"
+          },
+          "description": {
+            "en": "An expired session prompts another sign-in and returns to the previous page.",
+            "de": "Eine abgelaufene Sitzung zeigt einen Hinweis zur erneuten Anmeldung und führt zur vorherigen Seite zurück."
+          },
+          "feedbackDriven": true
+        }
+      ]
+    },
+    {
       "version": "0.8.0",
       "date": "2026-09-30",
       "title": {

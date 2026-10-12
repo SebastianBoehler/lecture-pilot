@@ -4,6 +4,30 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.9.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.9.0) — Simpler generation and course sharing
+
+Released 2026-10-12
+
+Course creation now uses bounded generation steps, preserves saved work, and shows review findings for lecturer decisions. Course links make sharing easier.
+
+### What changed
+
+- **Bounded generation with review notes** _(From feedback)_ — Learning goals, teaching tasks and lecture sections use fixed generation steps with targeted repairs. Remaining model review findings appear as warnings; structural checks still protect the draft.
+- **Draft and publish lectures independently** _(From feedback)_ — Draft generation starts when a lecture’s learning goals are approved. Approved drafts can be published while other lectures are still being prepared. Interrupted generation shows a resume action.
+- **Share courses with links and QR codes** — Share the course link, QR code or slide image. Enrollment remains required unless the lecturer explicitly enables a revocable join link.
+- **Clear session expiry notices** _(From feedback)_ — An expired session prompts another sign-in and returns to the previous page.
+
+### Deutsch
+
+**Einfachere Generierung und Kursfreigabe**
+
+Die Kurserstellung nutzt begrenzte Generierungsschritte, erhält gespeicherte Arbeit und zeigt Prüfhinweise für die Entscheidung der Lehrenden. Kurslinks erleichtern das Teilen.
+
+- **Begrenzte Generierung mit Prüfhinweisen** _(Aus Feedback)_ — Lernziele, Übungsaufgaben und Vorlesungsabschnitte entstehen in festen Schritten mit gezielten Reparaturen. Verbleibende Modellhinweise erscheinen als Warnungen; strukturelle Prüfungen schützen weiterhin den Entwurf.
+- **Vorlesungen einzeln erstellen und veröffentlichen** _(Aus Feedback)_ — Die Entwurfserstellung startet nach der Freigabe der Lernziele einer Vorlesung. Freigegebene Entwürfe können veröffentlicht werden, während andere Vorlesungen noch entstehen. Unterbrochene Generierungen zeigen eine Aktion zum Fortsetzen.
+- **Kurse mit Links und QR-Codes teilen** — Kurslink, QR-Code oder Folienbild teilen. Die Einschreibung bleibt erforderlich, sofern die Lehrperson nicht ausdrücklich einen widerrufbaren Beitrittslink aktiviert.
+- **Klare Hinweise bei abgelaufenen Sitzungen** _(Aus Feedback)_ — Eine abgelaufene Sitzung zeigt einen Hinweis zur erneuten Anmeldung und führt zur vorherigen Seite zurück.
+
 ## [0.8.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.8.0) — Your feedback, better course creation
 
 Released 2026-09-30

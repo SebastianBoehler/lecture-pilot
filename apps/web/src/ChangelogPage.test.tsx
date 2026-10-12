@@ -15,18 +15,16 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "Your feedback, better course creation",
+        name: "Simpler generation and course sharing",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("30 September 2026")).toBeInTheDocument();
-    expect(latestRelease.getByRole("link", { name: /v0\.8\.0 on GitHub/i })).toHaveAttribute(
+    expect(latestRelease.getByText("12 October 2026")).toBeInTheDocument();
+    expect(latestRelease.getByRole("link", { name: /v0\.9\.0 on GitHub/i })).toHaveAttribute(
       "href",
-      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.8.0",
+      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.9.0",
     );
-    expect(latestRelease.getByText("Rename and remove learning goals")).toBeInTheDocument();
-    expect(
-      latestRelease.getByText("Repair failed lectures with clearer feedback"),
-    ).toBeInTheDocument();
+    expect(latestRelease.getByText("Bounded generation with review notes")).toBeInTheDocument();
+    expect(latestRelease.getByText("Share courses with links and QR codes")).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -43,11 +41,9 @@ describe("ChangelogPage", () => {
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
     const latestRelease = within(screen.getAllByRole("article")[0]);
-    expect(latestRelease.getByText("30. September 2026")).toBeInTheDocument();
-    expect(latestRelease.getByText("Lernziele umbenennen und entfernen")).toBeInTheDocument();
-    expect(
-      latestRelease.getByText("Fehlgeschlagene Vorlesungen mit klareren Hinweisen reparieren"),
-    ).toBeInTheDocument();
+    expect(latestRelease.getByText("12. Oktober 2026")).toBeInTheDocument();
+    expect(latestRelease.getByText("Begrenzte Generierung mit Prüfhinweisen")).toBeInTheDocument();
+    expect(latestRelease.getByText("Kurse mit Links und QR-Codes teilen")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });
