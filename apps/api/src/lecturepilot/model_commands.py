@@ -12,18 +12,39 @@ from lecturepilot.providers import ProviderConfigurationError
 
 
 def canvas_outline_stable(turn: AgentTurnInput) -> str:
-    """Document-order outline. Focus never reorders or expands this prefix."""
+    """Published document-order outline, identical for every learner of one publication.
+
+    Focus never reorders or expands it, and learner-owned sections are listed separately
+    after the cache boundary by ``learner_sections_outline``.
+    """
     document = turn.canvas_context
     if document is None:
         return "Canvas context: unavailable. Use the current section id only."
+    learner_ids = set(turn.learner_section_ids)
     lines = [
         f"Canvas title: {document.title}",
         f"Canvas source: {document.source_ref}",
         "Allowed canvas targets:",
     ]
     for section in document.sections:
-        lines.extend(_section_lines(section, block_limit=5))
+        if section.id not in learner_ids:
+            lines.extend(_section_lines(section, block_limit=5))
     return _trim_text("\n".join(lines), 9000)
+
+
+def learner_sections_outline(turn: AgentTurnInput) -> str:
+    document = turn.canvas_context
+    learner_ids = set(turn.learner_section_ids)
+    if document is None or not learner_ids:
+        return "Learner-owned canvas sections: none."
+    lines = ["Learner-owned canvas sections (also allowed canvas targets):"]
+    previous = "start"
+    for section in document.sections:
+        if section.id in learner_ids:
+            lines.append(f"- placed after section_id={previous}")
+            lines.extend(_section_lines(section, block_limit=5))
+        previous = section.id
+    return _trim_text("\n".join(lines), 6000)
 
 
 def focused_section_blocks(turn: AgentTurnInput) -> str:
