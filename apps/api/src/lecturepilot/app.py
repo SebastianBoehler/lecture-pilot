@@ -21,6 +21,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.canvas_prediction_routes import register_canvas_prediction_routes
 from lecturepilot.canvas_annotation_routes import register_canvas_annotation_routes
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER
+from lecturepilot.storage_migrations import migrate_storage_on_startup
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.authoring_runtime import CourseCanvasAuthor
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="LecturePilot API",
         version=release.version,
+        lifespan=migrate_storage_on_startup,
         **production_fastapi_kwargs(),
     )
 
