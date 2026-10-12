@@ -1,8 +1,11 @@
 import { useEffect, useEffectEvent } from "react";
 
+import { pollUntil, PollTimeoutError } from "./polling";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import { restoreFullCourseCanvasDrafts } from "./professorCanvasRestoration";
 import type { CanvasDocument, LoginSession } from "./types";
+
+const RESTORED_POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
 /** Follows jobs that were already running when the builder was restored (e.g. after reload). */
 export function useRestoredGenerationPolling({
@@ -38,26 +41,29 @@ export function useRestoredGenerationPolling({
   });
   useEffect(() => {
     if (!courseId || !key) return;
-    let inFlight = false;
-    let active = true;
-    const timer = window.setInterval(() => {
-      if (inFlight) return;
-      inFlight = true;
-      void poll(key.split("|"), () => active)
-        .catch((error: unknown) => {
-          if (active) {
+    const controller = new AbortController();
+    pollUntil({
+      initialDelayMs: intervalMs,
+      maxDelayMs: intervalMs * 2,
+      timeoutMs: RESTORED_POLL_TIMEOUT_MS,
+      signal: controller.signal,
+      poll: async (signal) => {
+        try {
+          await poll(key.split("|"), () => !signal?.aborted);
+        } catch (error) {
+          if (!signal?.aborted) {
             reportError(
               error instanceof Error ? error.message : "Could not load current draft status.",
             );
           }
-        })
-        .finally(() => {
-          inFlight = false;
-        });
-    }, intervalMs);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
+        }
+        return { done: false };
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof PollTimeoutError) {
+        reportError("Generation is still running on the server. Reload to keep following it.");
+      }
+    });
+    return () => controller.abort();
   }, [courseId, intervalMs, key]);
 }

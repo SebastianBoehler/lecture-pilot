@@ -38,6 +38,39 @@ describe("practice exam API", () => {
     }
   });
 
+  it("stops polling when its owner aborts and honors Retry-After while rate limited", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(input).endsWith("/status")) {
+        return new Response(null, { status: 429, headers: { "Retry-After": "30" } });
+      }
+      return json({ status: "running" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    try {
+      const pending = generatePracticeExam(
+        "course-1",
+        { question_count: 25, duration_minutes: 90, ppi_source_ids: [] },
+        "original-key",
+        session,
+        controller.signal,
+      );
+      const rejected = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+      await vi.advanceTimersByTimeAsync(3_000);
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2); // POST, then one status call; Retry-After 30 s
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      controller.abort();
+      await vi.advanceTimersByTimeAsync(120_000);
+      await rejected;
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("sends typed generation input with an idempotency key", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       json(examPayload()),

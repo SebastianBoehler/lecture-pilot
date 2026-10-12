@@ -1,5 +1,12 @@
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
+import {
+  isTransientPollResponse,
+  pollUntil,
+  PollTimeoutError,
+  retryAfterMs,
+  type PollStep,
+} from "./polling";
 import type { CanvasGenerationErrorKind } from "./professorCanvasGeneration";
 import type { CanvasDocument, LoginSession } from "./types";
 
@@ -94,6 +101,11 @@ async function requestLectureCanvas(
   return canvas;
 }
 
+// Jobs may queue behind other authoring work for shared server slots; watch generously.
+const DRAFT_POLL_FIRST_MS = 1_500;
+const DRAFT_POLL_MAX_MS = 15_000;
+const DRAFT_POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+
 async function pollCanvasGeneration(
   courseId: string,
   lectureId: string,
@@ -102,32 +114,58 @@ async function pollCanvasGeneration(
   signal?: AbortSignal,
 ): Promise<CanvasDocument> {
   // The job keeps running server-side; an aborted owner (unmount, logout) only stops watching.
-  while (true) {
-    await abortableDelay(1500, signal);
-    const response = await fetch(
-      apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft/status`),
-      authRequestInit(session, { headers: { "Idempotency-Key": requestKey }, signal }),
+  try {
+    return await pollUntil({
+      initialDelayMs: DRAFT_POLL_FIRST_MS,
+      maxDelayMs: DRAFT_POLL_MAX_MS,
+      timeoutMs: DRAFT_POLL_TIMEOUT_MS,
+      signal,
+      poll: (pollSignal) =>
+        readGenerationStatus(courseId, lectureId, session, requestKey, pollSignal),
+    });
+  } catch (error) {
+    if (!(error instanceof PollTimeoutError)) throw error;
+    throw new CanvasDraftRequestError(
+      "Canvas generation is still in progress on the server. Reload to keep following it.",
+      false,
     );
-    const status = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new CanvasDraftRequestError(
-        readApiError(status, "Could not read generation progress."),
-        false,
-      );
-    }
-    if (status?.status === "failed") {
-      throw new CanvasDraftRequestError(
-        status.error_detail ?? "Canvas generation failed.",
-        true,
-        status.repairable === true,
-        typeof status.error_code === "string" ? status.error_code : undefined,
-      );
-    }
-    if (status?.status === "completed" && status.canvas) return status.canvas;
-    if (status?.status !== "running") {
-      throw new CanvasDraftRequestError("Invalid canvas generation status.", false);
-    }
   }
+}
+
+async function readGenerationStatus(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+  requestKey: string,
+  signal: AbortSignal | undefined,
+): Promise<PollStep<CanvasDocument>> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft/status`),
+    authRequestInit(session, { headers: { "Idempotency-Key": requestKey }, signal }),
+  );
+  if (isTransientPollResponse(response)) {
+    return { done: false, retryAfterMs: retryAfterMs(response) };
+  }
+  const status = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new CanvasDraftRequestError(
+      readApiError(status, "Could not read generation progress."),
+      false,
+    );
+  }
+  if (status?.status === "failed") {
+    throw new CanvasDraftRequestError(
+      status.error_detail ?? "Canvas generation failed.",
+      true,
+      status.repairable === true,
+      typeof status.error_code === "string" ? status.error_code : undefined,
+    );
+  }
+  if (status?.status === "completed" && status.canvas) return { done: true, value: status.canvas };
+  if (status?.status !== "running") {
+    throw new CanvasDraftRequestError("Invalid canvas generation status.", false);
+  }
+  return { done: false };
 }
 
 /** An interrupted job (lost worker) or lost connection resumes under its key; failures restart. */
@@ -140,21 +178,6 @@ export function forgetCanvasGenerationRequest(courseId: string, lectureId: strin
   for (const action of ["draft", "repair"] as const) {
     window.sessionStorage.removeItem(canvasGenerationStorageKey(courseId, lectureId, action));
   }
-}
-
-function abortableDelay(ms: number, signal?: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    signal?.throwIfAborted();
-    const timer = window.setTimeout(() => {
-      signal?.removeEventListener("abort", stop);
-      resolve();
-    }, ms);
-    function stop() {
-      window.clearTimeout(timer);
-      reject(signal?.reason);
-    }
-    signal?.addEventListener("abort", stop, { once: true });
-  });
 }
 
 function canvasGenerationStorageKey(
