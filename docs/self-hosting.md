@@ -193,7 +193,7 @@ canvas usable and adds a professor-facing warning.
 ## Current pilot blockers
 
 The live pilot is not production-security approval. Do not expand access until all blockers in
-`security_best_practices_report.md` are closed or explicitly accepted. In particular, student
+[`security-best-practices-report.md`](security-best-practices-report.md) are closed or explicitly accepted. In particular, student
 Alma/ILIAS identifier matching across representative accounts, disposable staging authorization
 tests, matched backup restore, retention/deletion, privacy notice, and provider/subprocessor review
 remain unverified or incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set

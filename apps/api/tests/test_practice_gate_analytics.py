@@ -7,13 +7,21 @@ from pydantic import ValidationError
 
 from lecturepilot.agent_gate_persistence import persist_quality_gate
 from lecturepilot.analytics_events import outcome_event_id, parse_analytics_event
-from lecturepilot.coaching_analytics import gate_metrics
+from lecturepilot.coaching_analytics import GateMetricsAccumulator
 from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.learning_map_models import HARDENING_GATE_FIELDS, LearningMapGate, digest_payload
+from lecturepilot.canonical_digest import canonical_json_digest
+from lecturepilot.learning_map_models import HARDENING_GATE_FIELDS, LearningMapGate
 from lecturepilot.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
 from lecturepilot.observability import Observability
 from test_analytics_routes import _client
 from test_learning_outcome_analytics import _prepare_gate
+
+
+def gate_metrics(events, **current):
+    accumulator = GateMetricsAccumulator(**current)
+    for event in events:
+        accumulator.record(event)
+    return accumulator.metrics()
 
 
 def test_professor_first_pass_uses_independent_exit_not_diagnostic_success() -> None:
@@ -69,7 +77,9 @@ def test_only_passed_independent_exit_updates_gate_completion(
         payload = turn.active_gate.model_dump(
             mode="json", exclude={"revision", *HARDENING_GATE_FIELDS}
         )
-        gate = LearningMapGate.model_validate({**payload, "revision": digest_payload(payload)})
+        gate = LearningMapGate.model_validate(
+            {**payload, "revision": canonical_json_digest(payload)}
+        )
         turn = turn.model_copy(update={"active_gate": gate})
     gate = turn.active_gate
     pass_decision = _decision(gate.id, gate.revision, QualityGateStatus.PASSED)

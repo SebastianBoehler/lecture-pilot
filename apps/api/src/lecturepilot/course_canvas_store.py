@@ -13,7 +13,6 @@ from lecturepilot.canvas_snapshot import (
     locked_canvas_paths,
     replace_canvas_snapshot,
 )
-from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import (
     CanvasMarkdownError,
     read_document_source,
@@ -72,7 +71,7 @@ class CourseCanvasStore:
             if not (draft_dir / "index.md").exists():
                 return None
             try:
-                document = normalize_learning_support(read_document_source(draft_dir))
+                document = read_document_source(draft_dir)
                 validate_bound_canvas_draft(
                     self.layout, draft_dir, document, course_id=course_id, lecture_id=lecture_id
                 )
@@ -262,7 +261,7 @@ def _write_validated_draft(
     document: CanvasDocument, staging: Path, source_revision: str, practice_design: PracticeDesign
 ) -> CanvasDocument:
     write_document_source(document, staging)
-    normalized = normalize_learning_support(read_document_source(staging))
+    normalized = read_document_source(staging)
     learning_maps.write_learning_map(normalized, staging, practice_design)
     write_practice_design_binding(staging, practice_design)
     initialize_learning_design(normalized, staging, source_revision, practice_design)
@@ -279,7 +278,7 @@ def _write_validated_publication(
 ) -> CanvasPublicationMetadata:
     shutil.copytree(draft_dir, staging, dirs_exist_ok=True)
     (staging / "learning-design.json").unlink(missing_ok=True)
-    document = normalize_learning_support(read_document_source(staging))
+    document = read_document_source(staging)
     write_document_source(
         document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
         staging,

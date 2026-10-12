@@ -1,12 +1,12 @@
 """Professor-owned learning intent, independent of generated teaching revisions."""
 
 from datetime import datetime
-from hashlib import sha256
 import json
 from typing import Annotated
 
 from pydantic import BeforeValidator, Field, model_validator
 
+from lecturepilot.canonical_digest import canonical_json_digest as digest
 from lecturepilot.course_practice_design_context import PracticePlanningContext
 from lecturepilot.course_practice_design_contract import (
     NonblankText,
@@ -109,12 +109,6 @@ class LearningIntent(StrictPracticeDesignModel):
 
 def goal_for(target) -> LearningGoal:
     return LearningGoal(**{key: getattr(target, key) for key in LearningGoal.model_fields})
-
-
-def digest(payload) -> str:
-    return sha256(
-        json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
 
 
 def has_approved_intent(design) -> bool:

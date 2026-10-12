@@ -61,7 +61,6 @@ volume.
           student/*.md
           components/*.yaml
           student-assets/*
-        canvas.json
 
   previews/professors/<hashed-preview-id>/...
 ```
@@ -168,11 +167,11 @@ Course `progress.json` holds exam-readiness attempts and revision state.
 Per-lecture state holds attendance, gates, coaching state, and the canvas
 overlay. Agent-created Markdown goes to `canvas/student/*.md`;
 interactive definitions go to `canvas/components/*.yaml`; provider-generated
-raster images go to `canvas/student-assets/`. `canvas.json` is a compiled API
-cache, never the editable source of truth.
+raster images go to `canvas/student-assets/`. These Markdown files are the only
+canvas source; no compiled canvas cache is written.
 
-The reader can import old `workspaces/students/.../canvas.json` or legacy asset
-paths for migration compatibility. It does not write new learner state there.
+Nothing reads the retired `workspaces/students/` learner root or old `canvas.json`
+caches; `storage_migration_legacy_workspaces` reports and removes them.
 Learner reset removes only the authenticated learner's selected course state.
 
 ## Private practice exams and PPI sources

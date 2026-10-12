@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
-import re
 
 from lecturepilot.models import TenantRole, UserProfile
 
@@ -11,7 +10,6 @@ class TenantAccessError(PermissionError):
     """Raised when tenant membership or role policy denies an operation."""
 
 
-_CACHE_PART_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 _COURSE_MANAGEMENT_ROLES = frozenset({TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR})
 
 
@@ -46,30 +44,8 @@ def assert_can_manage_course(context: TenantContext, *, course_tenant_id: str) -
         raise TenantAccessError("Course management requires a professor or tenant_admin role.")
 
 
-def assert_can_upload_course_material(context: TenantContext, *, course_tenant_id: str) -> None:
-    assert_can_manage_course(context, course_tenant_id=course_tenant_id)
-
-
-def assert_can_view_progress(
-    context: TenantContext,
-    *,
-    learner_user_id: str,
-    progress_tenant_id: str,
-) -> None:
-    assert_same_tenant(context, resource_tenant_id=progress_tenant_id)
-    if context.user_id == learner_user_id:
-        return
-    raise TenantAccessError("Learner progress belongs only to the active learner.")
-
-
 def tenant_storage_prefix(tenant_id: str) -> str:
     return f"tenants/{_tenant_hash(tenant_id)}"
-
-
-def tenant_cache_key(tenant_id: str, *, namespace: str, key: str) -> str:
-    if not _CACHE_PART_RE.fullmatch(namespace) or not _CACHE_PART_RE.fullmatch(key):
-        raise TenantAccessError("Cache keys must be bounded safe identifiers.")
-    return f"t:{_tenant_hash(tenant_id)}:{namespace}:{key}"
 
 
 def _tenant_hash(tenant_id: str) -> str:

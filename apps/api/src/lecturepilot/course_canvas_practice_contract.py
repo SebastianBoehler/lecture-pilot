@@ -122,27 +122,6 @@ def practice_source_sections(source_document: CanvasDocument) -> list[CanvasSect
     )
 
 
-def validate_section_practice(section: CanvasSection, targets: Sequence[PracticeTarget]) -> None:
-    expected = {f"practice-{target.id}": target for target in targets}
-    canonical = [block for block in section.blocks if block.id.startswith("practice-")]
-    if any(block.id not in expected for block in canonical):
-        raise CanvasGenerationRepairableError(
-            "Section contains a practice checkpoint assigned to different source evidence.",
-            section_id=section.id,
-        )
-    for checkpoint_id, target in expected.items():
-        matches = [block for block in canonical if block.id == checkpoint_id]
-        if (
-            len(matches) != 1
-            or matches[0].type != "checkpoint"
-            or matches[0].text != target.baseline_task
-        ):
-            raise CanvasGenerationRepairableError(
-                f"Section needs exactly one {checkpoint_id} checkpoint with the exact approved baseline task.",
-                section_id=section.id,
-            )
-
-
 def validate_practice_candidate(
     document: CanvasDocument,
     design: PracticeDesign,
