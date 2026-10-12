@@ -119,7 +119,7 @@ async def test_changed_source_discards_stale_resume_state_and_starts_fresh(tmp_p
     assert result.metrics.resumes == 0
 
 
-async def test_open_critic_notes_get_one_repair_then_become_draft_warnings(tmp_path):
+async def test_critic_notes_get_one_repair_then_become_draft_warnings(tmp_path):
     job = authoring_job(tmp_path)
     repairs = 0
 
@@ -138,7 +138,7 @@ async def test_open_critic_notes_get_one_repair_then_become_draft_warnings(tmp_p
     job.reviewer = CanvasQualityReviewer(Critic())
     result = await run_authoring_job(job, model=FunctionModel(respond))
     assert repairs == 1
-    assert any("open note" in warning for warning in result.document.warnings)
+    assert any("repaired once, not re-checked" in w for w in result.document.warnings)
 
 
 async def test_quality_notes_fit_a_source_already_at_the_warning_limit(tmp_path):
@@ -157,5 +157,5 @@ async def test_quality_notes_fit_a_source_already_at_the_warning_limit(tmp_path)
     job.reviewer = CanvasQualityReviewer(Critic())
     result = await run_authoring_job(job, model=FunctionModel(lambda m, i: markdown(VALID)))
     saved = CanvasDocument.model_validate(result.document.model_dump())
-    assert any("open note" in warning for warning in saved.warnings)
+    assert any("repaired once, not re-checked" in w for w in saved.warnings)
     assert any("20 pages (1–20)" in warning for warning in saved.warnings)

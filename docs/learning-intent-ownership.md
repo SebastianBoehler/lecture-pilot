@@ -46,8 +46,10 @@ New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 - `POST /intent/proposal`: one native structured proposal, one advisory source-support
   review (`learning_goal_support.py`) and at most one stateless repair of goals it names.
   The lecture objective is the numbered list of goal outcomes (titles when long), so it can
-  never promise more than the goals. Remaining findings never block: they are stored per
-  unchanged goal and served by `GET /intent/findings` as professor-facing hints.
+  never promise more than the goals. The repair is not reviewed again. Findings never
+  block: they are stored per goal and served by `GET /intent/findings` as professor-facing
+  hints with `status` `open` (the goal is unchanged) or `repaired_unchecked` (the single
+  repair changed it; the new wording was not re-checked).
   `learning_goal_outcomes.py` returns generated outcomes such as "understand" or
   "verstehen" for repair; stored and professor-edited goals keep the lenient validator.
 - Readiness and approval only hash confirmed source files
@@ -120,8 +122,9 @@ an unaccepted draft. Resumed sessions receive the current saved review alongside
 their history. The final validator still rechecks acceptance before completion.
 
 Teaching implementation is a bounded workflow (`teaching_design_job.py`): one structured
-call per missing goal, a lecture review, one repair per flagged goal and an annotating
-review. Saved targets are the resume points. Unresolved review findings, including
+call per missing goal, a lecture review and one repair per flagged goal; repairs are not
+reviewed again. A canvas design conflict reuses that review and repairs only the goals whose
+checkpoints it names. Saved targets are the resume points. Unresolved review findings, including
 critical ones, stay attached as warnings for professor review instead of failing
 generation. No approval is changed by teaching. Generation errors expose a categorical code alongside status. An approved
 design conflict offers a direct learning-plan review action, including after

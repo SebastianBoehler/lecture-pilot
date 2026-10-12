@@ -86,3 +86,38 @@ it("shows advisory source findings next to the affected learning goal", () => {
   expect(screen.getByRole("note")).toHaveTextContent("The slides only name it.");
   expect(screen.getByRole("button", { name: "Approve learning goals" })).toBeEnabled();
 });
+
+it("labels a finding the single repair addressed as not re-checked", () => {
+  const design = intentDesign("lecture-01");
+  const goal = design.learning_intent!.goals[0];
+  render(
+    <I18nProvider locale="en" setLocale={() => {}}>
+      <ProfessorPracticeDesignStep
+        designs={{
+          "lecture-01": {
+            ...design,
+            goal_findings: [
+              {
+                goal_id: goal.id,
+                reason: "The slides only name it.",
+                status: "repaired_unchecked",
+              },
+            ],
+          },
+        }}
+        lectures={[{ id: "lecture-01", label: "lecture-01" }]}
+        error={null}
+        pendingAction={null}
+        pendingLectureId={null}
+        routingReady
+        onApprove={vi.fn()}
+        onSave={vi.fn()}
+        onPropose={vi.fn()}
+        onReview={vi.fn()}
+      />
+    </I18nProvider>,
+  );
+  const note = screen.getByRole("note");
+  expect(note).toHaveTextContent("The slides only name it.");
+  expect(note).toHaveTextContent("AI revised this goal once; the revision was not re-checked.");
+});
