@@ -92,6 +92,8 @@ export function AppRoutes(props: AppRoutesProps) {
       />
     );
   }
+  // A course manager on the login route is being forwarded once their courses are known.
+  if (view === "login" && courseManagerSession) return <ViewLoadingState />;
   if (view === "login") {
     return (
       <LoginView

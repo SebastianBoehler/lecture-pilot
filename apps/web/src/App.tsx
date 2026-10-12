@@ -3,9 +3,9 @@ import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useState } from
 import { publishLectureCanvas } from "./api";
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
-import { landingView } from "./appLanding";
+import { landingView, resolveLandingView } from "./appLanding";
 import { AppRoutes } from "./AppRoutes";
-import { pathForView, requiresSession } from "./appRoute";
+import { pathForView, readAppRoute, requiresSession } from "./appRoute";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { localDemoSession, localProfessorSession } from "./appDefaults";
 import { canManageCourses } from "./authz";
@@ -65,11 +65,28 @@ function App() {
     writeLocalePreference(locale);
   }, [locale]);
 
+  async function openLanding(activeSession: LoginSession, afterLogin: boolean) {
+    const landing = await resolveLandingView(activeSession);
+    // A visitor who already moved on while the landing resolved keeps their choice.
+    if (afterLogin && readAppRoute(window.location).view !== "login") return;
+    navigate(pathForView(landing), { replace: afterLogin });
+    setPanelMode(null);
+  }
+  const openLandingAfterLogin = useEffectEvent((activeSession: LoginSession) =>
+    openLanding(activeSession, true),
+  );
+
   useEffect(() => {
-    if (session && route.view === "login") {
-      navigate(takeReturnPath() ?? pathForView(landingView(session)), { replace: true });
-      setPanelMode(null);
+    if (!session || route.view !== "login") return;
+    const returnPath = takeReturnPath();
+    const landing = landingView(session);
+    // Course managers' landing depends on whether they already have courses.
+    if (!returnPath && landing === "professor") {
+      void openLandingAfterLogin(session);
+      return;
     }
+    navigate(returnPath ?? pathForView(landing), { replace: true });
+    setPanelMode(null);
   }, [navigate, route.view, session, setPanelMode]);
 
   useEffect(() => {
@@ -162,7 +179,10 @@ function App() {
           activeView={view}
           session={session}
           theme={theme}
-          onBrand={() => changeView(landingView(session))}
+          onBrand={() => {
+            if (session) void openLanding(session, false);
+            else changeView("login");
+          }}
           onOpenDashboard={() => changeView(session ? "dashboard" : "login")}
           onOpenPerformance={() => openManagedView("performance")}
           onOpenUsage={() => openManagedView("usage")}

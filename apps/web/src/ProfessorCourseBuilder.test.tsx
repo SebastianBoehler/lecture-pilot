@@ -80,11 +80,9 @@ describe("Professor course builder", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
-    expect(await screen.findByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(await screen.findByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /02 materials/i }));
     expect(screen.getByText(/drop a folder or files here/i)).toBeInTheDocument();
@@ -236,8 +234,9 @@ describe("Professor course builder", () => {
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
     expect(await screen.findByText(/^published$/i)).toBeInTheDocument();
+    // A professor who now has a course lands on course management.
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
-    expect(await screen.findByRole("heading", { name: /^review & publish$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^manage courses$/i })).toBeInTheDocument();
     expect(screen.queryByText(/ai tutor available/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(

@@ -26,6 +26,8 @@ export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>
   // The lazily loaded first-visit tour would otherwise take focus at an arbitrary point.
   window.localStorage.setItem(walkthroughStorageKey(localProfessorSession.username), "seen");
   await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+  // Professors with courses land on course management; the builder is one header click away.
+  await user.click(await screen.findByRole("button", { name: /^course builder$/i }));
   await screen.findByRole("navigation", { name: /course builder progress/i }, { timeout: 5_000 });
 }
 
