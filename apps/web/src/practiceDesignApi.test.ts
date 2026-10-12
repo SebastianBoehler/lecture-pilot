@@ -59,7 +59,9 @@ describe("practice-design API", () => {
     expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Authorization")).toBe(
       "Bearer professor-token",
     );
-    expect(String(fetchMock.mock.calls[1][0])).toMatch(/\/proposal\?refresh=true$/);
+    expect(String(fetchMock.mock.calls[1][0])).toMatch(
+      /\/practice-design\/intent\/proposal\?refresh=true$/,
+    );
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[2][1]?.method).toBe("PUT");
     expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual(update(current));

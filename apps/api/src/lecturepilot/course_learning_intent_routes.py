@@ -7,6 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, BeforeValidator, Field
 
 from lecturepilot.api_auth import request_context
+from lecturepilot.course_learning_intent import has_approved_intent
 from lecturepilot.course_learning_intent_store import LearningIntentStore
 from lecturepilot.learning_goal_support import (
     goal_findings_path,
@@ -108,8 +109,10 @@ def register_learning_intent_routes(
         course_id: str,
         lecture_id: str,
         request: Request,
+        refresh: bool = False,
         context: TenantContext = Depends(request_context),
     ):
+        """Propose goals once per source revision; `refresh` replaces unapproved goals."""
         require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         store = LearningIntentStore(layout)
@@ -118,12 +121,20 @@ def register_learning_intent_routes(
             with locked_course_state(layout.course_root(course_id)):
                 revision = source_revision(app, course_id, lecture_id)
                 existing = store.read(course_id=course_id, lecture_id=lecture_id)
-            if existing is not None and existing.source_revision == revision:
+            current = existing is not None and existing.source_revision == revision
+            if current and refresh and has_approved_intent(existing):
+                raise PracticeDesignStale(
+                    "These learning goals are approved. Edit them to propose new goals."
+                )
+            if current and not refresh:
                 return existing, None
             # Parsing (conversion, LaTeX, OCR) never holds the course lock.
             return existing, source_context(app, source_document, course_id, lecture_id)
 
-        existing, loaded = await run_in_threadpool(current_sources)
+        try:
+            existing, loaded = await run_in_threadpool(current_sources)
+        except PracticeDesignStale as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         if loaded is None:
             return existing
         source, revision, paths = loaded

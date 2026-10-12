@@ -57,9 +57,10 @@ export async function proposePracticeDesign(input: {
   refresh?: boolean;
   session: LoginSession;
 }): Promise<PracticeDesign> {
+  // Refresh replaces unapproved goals with a new goal proposal; it never generates tasks.
   const suffix = input.refresh ? "?refresh=true" : "";
   return request(
-    `${path(input.courseId, input.lectureId)}/${input.refresh ? "proposal" : "intent/proposal"}${suffix}`,
+    `${path(input.courseId, input.lectureId)}/intent/proposal${suffix}`,
     input.session,
     { method: "POST" },
     "Practice design proposal failed to generate.",

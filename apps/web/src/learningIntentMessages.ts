@@ -31,7 +31,7 @@ export const learningIntentMessages = {
     "builder.intent.minimumGoal":
       "Keep at least one learning goal. You can overwrite its title and outcome.",
     "builder.intent.edit": "Edit learning goals",
-    "builder.intent.refresh": "Repair generated practice",
+    "builder.intent.refresh": "Propose new learning goals",
   },
   de: {
     "builder.intent.reviewImplementation":
@@ -65,6 +65,6 @@ export const learningIntentMessages = {
     "builder.intent.minimumGoal":
       "Mindestens ein Lernziel ist erforderlich. Titel und Lernergebnis können überschrieben werden.",
     "builder.intent.edit": "Lernziele bearbeiten",
-    "builder.intent.refresh": "Generierte Aufgaben korrigieren",
+    "builder.intent.refresh": "Neue Lernziele vorschlagen",
   },
 } as const;

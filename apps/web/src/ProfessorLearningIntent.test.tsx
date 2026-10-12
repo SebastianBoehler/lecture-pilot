@@ -33,7 +33,7 @@ function goalsOnly(): PracticeDesign {
   };
 }
 
-function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn()) {
+function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn(), onPropose = vi.fn()) {
   render(
     <I18nProvider locale="en" setLocale={() => {}}>
       <ProfessorPracticeDesignStep
@@ -45,7 +45,7 @@ function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn()) {
         routingReady
         onApprove={onApprove}
         onSave={onSave}
-        onPropose={vi.fn()}
+        onPropose={onPropose}
         onReview={vi.fn()}
       />
     </I18nProvider>,
@@ -66,6 +66,34 @@ describe("professor learning intent", () => {
       fixed_target_ids: [],
       convert_legacy: false,
     });
+  });
+
+  it("regenerates unapproved goals through a new goal proposal", async () => {
+    const design = goalsOnly();
+    const propose = vi.fn();
+    show(design, vi.fn(), vi.fn(), propose);
+    await userEvent.click(screen.getByRole("button", { name: "Propose new learning goals" }));
+    expect(propose).toHaveBeenCalledWith(design.lecture_id, true);
+  });
+
+  it("offers no goal regeneration once goals are approved", () => {
+    const pending = goalsOnly();
+    const design = {
+      ...pending,
+      targets: practiceDesignFixture({ approvedBy: null }).targets,
+      learning_intent: {
+        ...pending.learning_intent!,
+        approval: {
+          approved_by: "professor",
+          approved_at: "2026-08-26T12:00:00Z",
+          intent_revision: pending.learning_intent!.revision,
+        },
+      },
+    };
+    show(design);
+    expect(screen.getByText("Learning goals approved")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /propose new learning goals/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /repair generated practice/i })).toBeNull();
   });
 
   it("saves an edited goal and disables approval until its new revision is saved", async () => {

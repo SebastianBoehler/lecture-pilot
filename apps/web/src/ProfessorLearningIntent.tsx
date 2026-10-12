@@ -88,8 +88,8 @@ export function ProfessorLearningIntent({
             {t("builder.intent.approve")}
           </button>
         ) : null}
-        {!legacy && approved && draft.targets.length > 0 ? (
-          <button type="button" disabled={disabled || dirty} onClick={onRefresh}>
+        {!legacy && !approved && !dirty && !stale ? (
+          <button type="button" disabled={disabled} onClick={onRefresh}>
             {t("builder.intent.refresh")}
           </button>
         ) : null}
