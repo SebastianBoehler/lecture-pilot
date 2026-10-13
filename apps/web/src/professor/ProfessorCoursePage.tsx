@@ -4,7 +4,8 @@ import { useI18n } from "../i18n/i18n";
 import type { Lecture, LoginSession, ManagedCourseWorkspaceResult } from "../shared/types";
 import { CourseDraftReviewPanel } from "./CourseDraftReviewPanel";
 import { CourseGoalReviewPanel } from "./CourseGoalReviewPanel";
-import { courseLectureSummary } from "./courseLectureStatus";
+import { CourseChangeRequestDialog } from "./CourseChangeRequestDialog";
+import { canRequestChange, courseLectureSummary } from "./courseLectureStatus";
 import type { LectureState } from "./courseLectureStateTypes";
 import { CourseLectureRow } from "./CourseLectureRow";
 import { CourseStaleGoalsPanel } from "./CourseStaleGoalsPanel";
@@ -40,6 +41,7 @@ export function ProfessorCoursePage({
   });
   const [openId, setOpenId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"update" | "share" | null>(null);
+  const [changeId, setChangeId] = useState<string | null>(null);
   const lectures = states?.lectures ?? [];
   const summary = courseLectureSummary(lectures);
   const ready = lectures.filter((lecture) => lecture.next_action === "review_draft");
@@ -49,6 +51,7 @@ export function ProfessorCoursePage({
       ? workspace.lectures.find((item) => item.id === lecture.lecture_id)
       : undefined;
   const firstPublished = lectures.map(previewable).find(Boolean);
+  const changeLecture = lectures.find((lecture) => lecture.lecture_id === changeId);
 
   return (
     <main className="professor-screen course-page">
@@ -136,6 +139,7 @@ export function ProfessorCoursePage({
                   onConfirmRouting={() => onResumeCourse(workspace)}
                   onStartDraft={() => void actions.startDraft(id)}
                   onPreview={preview ? () => onPreviewLecture(courseId, preview) : undefined}
+                  onRequestChange={canRequestChange(lecture) ? () => setChangeId(id) : undefined}
                 />
               );
             })}
@@ -152,6 +156,18 @@ export function ProfessorCoursePage({
           onApplied={() => {
             setDialog(null);
             onCourseChanged();
+            void refresh();
+          }}
+        />
+      ) : null}
+      {changeLecture ? (
+        <CourseChangeRequestDialog
+          courseId={courseId}
+          lecture={changeLecture}
+          session={session}
+          onClose={() => setChangeId(null)}
+          onSubmitted={() => {
+            setChangeId(null);
             void refresh();
           }}
         />

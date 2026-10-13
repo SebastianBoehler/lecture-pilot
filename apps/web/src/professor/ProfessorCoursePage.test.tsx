@@ -73,13 +73,23 @@ describe("Professor course page", () => {
     for (const [title, status, action] of expected) {
       const cells = within(row(title));
       expect(cells.getByText(status)).toBeInTheDocument();
+      // Preview and Request a change are secondary actions beside the one next step.
       const buttons = cells
         .queryAllByRole("button")
-        .filter((button) => !button.textContent?.startsWith("Preview"));
+        .filter((button) => !/^(Preview|Request a change)/.test(button.textContent ?? ""));
       expect(
         buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent),
       ).toEqual(action ? [action] : []);
     }
+    const changeable = screen
+      .getAllByRole("button", { name: /^Request a change: / })
+      .map((button) => button.getAttribute("aria-label"));
+    // Lectures whose current goals have a ready draft or publication.
+    expect(changeable).toEqual([
+      "Request a change: Introduction",
+      "Request a change: Ensembles",
+      "Request a change: Mixtures",
+    ]);
     expect(within(row("Kernels")).getByRole("button")).toBeDisabled();
     expect(within(row("Regularization")).getByText("New")).toBeInTheDocument();
     expect(

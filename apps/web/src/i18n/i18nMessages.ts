@@ -21,6 +21,7 @@ import { studyMessages } from "./studyMessages";
 import { courseSupportMessages } from "./courseSupportMessages";
 import { coursePageMessages } from "./coursePageMessages";
 import { courseUpdateMessages } from "./courseUpdateMessages";
+import { changeRequestMessages } from "./changeRequestMessages";
 
 export const messages = {
   en: {
@@ -46,6 +47,7 @@ export const messages = {
     ...courseSupportMessages.en,
     ...coursePageMessages.en,
     ...courseUpdateMessages.en,
+    ...changeRequestMessages.en,
   },
   de: {
     ...practiceHistoryMessages.de,
@@ -70,6 +72,7 @@ export const messages = {
     ...courseSupportMessages.de,
     ...coursePageMessages.de,
     ...courseUpdateMessages.de,
+    ...changeRequestMessages.de,
   },
 } as const;
 
