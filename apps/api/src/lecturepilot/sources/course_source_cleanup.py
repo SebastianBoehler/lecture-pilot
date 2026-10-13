@@ -25,11 +25,6 @@ from lecturepilot.core.durable_files import (
 )
 from lecturepilot.sources.source_index import refresh_course_source_index
 from lecturepilot.sources.source_retention import retained_source_paths
-from lecturepilot.sources.source_retention_provenance import (
-    retention_provenance_path,
-    record_retention_provenance,
-)
-from lecturepilot.authoring.course_canvas_repairs import _course_provenance
 from lecturepilot.core.workspace_fs import WorkspaceFSError
 
 
@@ -86,7 +81,7 @@ def confirm_and_prune_sources(
         paths=[],
         cleanup_on_success=False,
     ) as transaction:
-        for path in [routing_path, index_path, retention_provenance_path(course_root), *targets]:
+        for path in [routing_path, index_path, *targets]:
             transaction.track_file(path, path.relative_to(course_root).as_posix())
         transaction.checkpoint()
         confirm_source_routing(
@@ -96,7 +91,6 @@ def confirm_and_prune_sources(
             routing_path=routing_path,
             routing=routing,
         )
-        previous_provenance = _course_provenance(layout, course_id)
         for path in targets:
             path.unlink()
             fsync_directory(path.parent)
@@ -112,12 +106,6 @@ def confirm_and_prune_sources(
                 source_revision=source_revision(current, lectures),
                 routes=[r for r in routing.routes if r.path in keep],
             ),
-        )
-        remaining_provenance = _course_provenance(layout, course_id)
-        record_retention_provenance(
-            course_root,
-            previous=previous_provenance,
-            remaining=remaining_provenance,
         )
         mark_course_update_committed(marker)
     retire_committed_course_update(update_root)

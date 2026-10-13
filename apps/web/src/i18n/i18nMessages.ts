@@ -19,6 +19,8 @@ import { onboardingVideoMessages } from "./onboardingVideoMessages";
 import { infoPageMessages } from "./infoPageMessages";
 import { studyMessages } from "./studyMessages";
 import { courseSupportMessages } from "./courseSupportMessages";
+import { coursePageMessages } from "./coursePageMessages";
+import { courseUpdateMessages } from "./courseUpdateMessages";
 
 export const messages = {
   en: {
@@ -42,6 +44,8 @@ export const messages = {
     ...infoPageMessages.en,
     ...studyMessages.en,
     ...courseSupportMessages.en,
+    ...coursePageMessages.en,
+    ...courseUpdateMessages.en,
   },
   de: {
     ...practiceHistoryMessages.de,
@@ -64,6 +68,8 @@ export const messages = {
     ...infoPageMessages.de,
     ...studyMessages.de,
     ...courseSupportMessages.de,
+    ...coursePageMessages.de,
+    ...courseUpdateMessages.de,
   },
 } as const;
 

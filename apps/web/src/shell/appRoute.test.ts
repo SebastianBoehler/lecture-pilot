@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { courseUpdatePath, lessonPath, pathForView, readAppRoute } from "./appRoute";
+import { coursePagePath, lessonPath, pathForView, readAppRoute } from "./appRoute";
 
 describe("app routes", () => {
   it("maps major views to stable paths", () => {
@@ -13,11 +13,11 @@ describe("app routes", () => {
     expect(pathForView("how-it-works")).toBe("/how-it-works");
   });
 
-  it("round-trips learner, preview, draft, and course-update routes", () => {
+  it("round-trips learner, preview, draft, and course page routes", () => {
     const learner = lessonPath("machine learning", "lecture-03");
     const preview = lessonPath("machine learning", "lecture-03", "professor-preview");
     const draft = lessonPath("machine learning", "lecture-03", "draft");
-    const update = courseUpdatePath("machine learning");
+    const course = coursePagePath("machine learning");
 
     expect(read(learner)).toEqual({
       view: "lesson",
@@ -27,10 +27,9 @@ describe("app routes", () => {
     });
     expect(read(preview)).toMatchObject({ view: "lesson", lessonMode: "professor-preview" });
     expect(read(draft)).toMatchObject({ view: "lesson", lessonMode: "draft" });
-    expect(read(update)).toEqual({
-      view: "course-management",
-      updateCourseId: "machine learning",
-    });
+    expect(read(course)).toEqual({ view: "course-management", courseId: "machine learning" });
+    expect(read("/professor/courses")).toEqual({ view: "course-management" });
+    expect(read("/professor/courses/new")).toEqual({ view: "professor" });
   });
 });
 

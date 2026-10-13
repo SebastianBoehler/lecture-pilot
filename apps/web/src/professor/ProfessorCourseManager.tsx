@@ -25,7 +25,7 @@ type ProfessorCourseManagerProps = {
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onResumeCourse: (workspace: ManagedCourseWorkspaceResult) => void;
   onShareCourse: (workspace: ManagedCourseWorkspaceResult) => void;
-  onUpdateCourse: (courseId: string) => void;
+  onOpenCourse: (courseId: string) => void;
   session: LoginSession;
   workspaces: ManagedCourseWorkspaceResult[];
 };
@@ -41,7 +41,7 @@ export function ProfessorCourseManager({
   onPreviewLecture,
   onResumeCourse,
   onShareCourse,
-  onUpdateCourse,
+  onOpenCourse,
   session,
   workspaces,
 }: ProfessorCourseManagerProps) {
@@ -102,9 +102,21 @@ export function ProfessorCourseManager({
                     >
                       {t("courseAccess.manageDefault")}
                     </button>
-                    {courseSetupState(workspace).kind !== "published" ? (
+                    {courseSetupState(workspace).published > 0 ? (
                       <button
                         className="refresh-button primary-action"
+                        type="button"
+                        aria-label={t("coursePage.openAria", { course: workspace.course.title })}
+                        onClick={() => onOpenCourse(workspace.course.id)}
+                      >
+                        {t("coursePage.open")}
+                      </button>
+                    ) : null}
+                    {courseSetupState(workspace).kind !== "published" ? (
+                      <button
+                        className={`refresh-button${
+                          courseSetupState(workspace).published > 0 ? "" : " primary-action"
+                        }`}
                         type="button"
                         aria-label={t("professor.setup.resumeAria", {
                           course: workspace.course.title,
@@ -122,15 +134,6 @@ export function ProfessorCourseManager({
                     >
                       {t("share.action")}
                     </button>
-                    {courseSetupState(workspace).published > 0 ? (
-                      <button
-                        className="refresh-button"
-                        type="button"
-                        onClick={() => onUpdateCourse(workspace.course.id)}
-                      >
-                        {t("professor.update")}
-                      </button>
-                    ) : null}
                     {workspace.publishedLectureIds?.length ? (
                       <ExamReadinessPanel
                         compact

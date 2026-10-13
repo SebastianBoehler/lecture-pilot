@@ -21,6 +21,7 @@ from starlette.concurrency import run_in_threadpool
 from lecturepilot.migrations_storage import (
     storage_migration_canvas_boilerplate,
     storage_migration_learning_design_approval,
+    storage_migration_lecture_source_alias,
     storage_migration_legacy_publications,
     storage_migration_legacy_workspaces,
     storage_migration_practice_design_schema,
@@ -41,6 +42,8 @@ MIGRATIONS: tuple[tuple[str, Migration], ...] = (
     # Draft approvals are reduced after designs reach schema 2.
     ("2026-10-practice-design-schema-2", storage_migration_practice_design_schema.migrate),
     ("2026-10-learning-design-approval", storage_migration_learning_design_approval.migrate),
+    # Keeps revisions bound before lecture-local source revisions current.
+    ("2026-10-lecture-source-alias", storage_migration_lecture_source_alias.migrate),
 )
 
 

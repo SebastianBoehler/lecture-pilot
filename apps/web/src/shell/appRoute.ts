@@ -9,7 +9,8 @@ export type AppRoute =
     }
   | {
       view: "course-management";
-      updateCourseId?: string;
+      /** A single managed course page; absent for the course list. */
+      courseId?: string;
     }
   | {
       /** Shared course link (QR code); `code` is present only for explicit join links. */
@@ -65,8 +66,13 @@ export function readAppRoute(location: Pick<Location, "pathname">): AppRoute {
   if (segments[0] === "join" && segments.length === 3) {
     return { view: "course-link", courseId: segments[1], code: segments[2] };
   }
-  if (segments[0] === "professor" && segments[1] === "courses" && segments[3] === "update") {
-    return { view: "course-management", updateCourseId: segments[2] };
+  if (
+    segments[0] === "professor" &&
+    segments[1] === "courses" &&
+    segments.length === 3 &&
+    segments[2] !== "new"
+  ) {
+    return { view: "course-management", courseId: segments[2] };
   }
 
   const path = normalizePath(location.pathname);
@@ -96,8 +102,8 @@ export function lessonKey(courseId: string, lectureId: string, mode: LessonMode)
   return `${mode}:${courseId}:${lectureId}`;
 }
 
-export function courseUpdatePath(courseId: string) {
-  return `/professor/courses/${encodeURIComponent(courseId)}/update`;
+export function coursePagePath(courseId: string) {
+  return `/professor/courses/${encodeURIComponent(courseId)}`;
 }
 
 export function requiresSession(view: View) {

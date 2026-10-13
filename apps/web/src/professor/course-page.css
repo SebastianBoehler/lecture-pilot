@@ -1,0 +1,227 @@
+.course-page {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  width: min(1120px, calc(100% - 32px));
+}
+
+.course-back,
+.course-quiet-button {
+  justify-self: start;
+  border: 0;
+  padding: 4px 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.course-back:hover,
+.course-quiet-button:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.course-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.course-page-heading {
+  min-width: 0;
+}
+
+.course-page-heading h1 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.course-page-heading p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.course-page-actions,
+.lecture-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-row-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--control-height);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 6px var(--control-padding-x);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.course-row-button:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-secondary);
+}
+
+.course-row-button[data-primary] {
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.course-row-button[data-primary]:hover:not(:disabled) {
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
+}
+
+.course-row-button:disabled {
+  cursor: not-allowed;
+  border-color: var(--color-border-primary);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+
+.course-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: course-spin 0.9s linear infinite;
+}
+
+@keyframes course-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.course-publish-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--color-bg-secondary);
+}
+
+.course-publish-bar p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.course-lecture-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.course-lecture-table thead th {
+  padding: 0 12px 10px;
+  border-bottom: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.course-lecture-table thead th:last-child,
+.course-lecture-action {
+  text-align: right;
+}
+
+.course-lecture-row > * {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--color-border-primary);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.course-lecture-row[data-open] > * {
+  border-bottom-color: transparent;
+  background: var(--color-bg-secondary);
+}
+
+.course-lecture-number,
+.course-lecture-date {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.course-lecture-number {
+  width: 3.5em;
+}
+
+.course-lecture-title {
+  font-weight: 650;
+}
+
+.course-lecture-new {
+  margin-left: 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.course-lecture-reason {
+  display: block;
+  max-width: 60ch;
+  margin-top: 4px;
+  color: var(--color-danger);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.course-lecture-action {
+  white-space: nowrap;
+}
+
+.course-lecture-action .course-quiet-button {
+  margin-right: 14px;
+}
+
+.course-lecture-panel-row > td {
+  padding: 4px 12px 20px;
+  border-bottom: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+}
+
+/* Row steps stay clearly actionable without competing with the page's primary action. */
+.course-lecture-action .course-row-button[data-primary] {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: var(--color-bg-primary);
+}
+
+.course-lecture-action .course-row-button[data-primary]:hover:not(:disabled) {
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}

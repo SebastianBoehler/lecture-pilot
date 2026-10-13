@@ -4,6 +4,7 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 
+from lecturepilot.courses.lecture_title import document_title
 from lecturepilot.courses.lecture_date_extraction import anchored_weekly_date, extract_source_date
 from lecturepilot.core.models import LectureScheduleItem, LectureScheduleProposal
 from lecturepilot.sources.source_bundle import SourceBundleFile
@@ -95,43 +96,4 @@ def _resolve_source(relative_path: str, roots: list[Path]) -> Path | None:
 
 def _extract_title(path: Path) -> str | None:
     text = path.read_text(encoding="utf-8", errors="ignore")[:60_000]
-    if path.suffix.lower() == ".md":
-        heading = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
-        if heading:
-            return _clean_title(heading.group(1))
-    for pattern in (
-        r"\\section\{([^{}]+)\}",
-        r"\\begin\{frame\}\{([^{}]+)\}",
-        r"\\frametitle\{([^{}]+)\}",
-        r"\\title\{([^{}]+)\}",
-    ):
-        for match in re.finditer(pattern, text):
-            title = _clean_title(match.group(1))
-            if title and not _is_admin_title(title):
-                return title
-    return None
-
-
-def _clean_title(value: str) -> str:
-    return re.sub(r"\s+", " ", value.replace("\\\\", " ")).strip(" -")
-
-
-def _is_admin_title(title: str) -> bool:
-    lowered = title.casefold()
-    if lowered in {"course thread", "feedback", "note", "plan", "requirements"}:
-        return True
-    if lowered.startswith(("plan for", "recap and plan")):
-        return True
-    return any(
-        marker in lowered
-        for marker in (
-            "admin",
-            "before we start",
-            "consult",
-            "evaluation",
-            "klausur",
-            "lehrevaluation",
-            "outline",
-            "rückmeldung",
-        )
-    )
+    return document_title(text, markdown=path.suffix.lower() == ".md")

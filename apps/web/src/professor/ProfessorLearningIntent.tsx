@@ -23,6 +23,7 @@ export function ProfessorLearningIntent({
   onRefresh,
   onUseLatest,
   onRegenerate,
+  primaryApprove = false,
 }: {
   design: PracticeDesign;
   draft: PracticeDesign;
@@ -36,6 +37,8 @@ export function ProfessorLearningIntent({
   onRefresh: () => void;
   onUseLatest: () => void;
   onRegenerate?: () => void;
+  /** On the course page approving is the lecture's main step; the builder keeps "Approve all". */
+  primaryApprove?: boolean;
 }) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
@@ -79,6 +82,7 @@ export function ProfessorLearningIntent({
         {!approved ? (
           <button
             type="button"
+            className={primaryApprove ? "primary-action" : undefined}
             disabled={disabled || dirty}
             onClick={() => onApprove({ fixed_target_ids: fixed })}
           >

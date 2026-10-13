@@ -4,7 +4,7 @@ import { rememberReturnPath } from "./shell/returnPath";
 import { clearSavedFlow, writeResumeFlow } from "./professor/professorBuilderState";
 import { lazy, Suspense, type ReactNode } from "react";
 
-import { courseUpdatePath, type AppRoute } from "./shell/appRoute";
+import { coursePagePath, type AppRoute } from "./shell/appRoute";
 import { CourseManagementAccessRequired } from "./professor/CourseManagementAccessRequired";
 import { PlatformAdminRequired } from "./admin/PlatformAdminRequired";
 import { isPlatformAdmin } from "./shared/authz";
@@ -163,13 +163,13 @@ export function AppRoutes(props: AppRoutesProps) {
           writeResumeFlow(workspace);
           props.onViewChange("professor");
         }}
-        onCloseCourseUpdate={() => props.onViewChange("course-management")}
+        onCloseCourse={() => props.onViewChange("course-management")}
         onPreviewLecture={(courseId, lecture) => {
           void lesson.openLecture(courseId, lecture, "professor-preview");
         }}
-        onUpdateCourse={(courseId) => props.onNavigatePath(courseUpdatePath(courseId))}
+        onOpenCourse={(courseId) => props.onNavigatePath(coursePagePath(courseId))}
         session={courseManagerSession}
-        updateCourseId={route.view === "course-management" ? route.updateCourseId : undefined}
+        courseId={route.view === "course-management" ? route.courseId : undefined}
         onWorkspaceDeleted={props.onWorkspaceDeleted}
       />,
     );

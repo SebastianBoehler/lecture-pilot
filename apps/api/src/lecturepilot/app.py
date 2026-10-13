@@ -262,7 +262,13 @@ def create_app() -> FastAPI:
         course_tenant_id=COURSE_TENANT_ID,
         seeded_course=COURSE,
     )
-    register_course_update_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_course_update_routes(
+        app,
+        course_tenant_id=COURSE_TENANT_ID,
+        source_document=lambda course_id, lecture_id: course_builder_source_document(
+            app, course_id, lecture_id
+        ),
+    )
     register_course_source_routing_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_exam_readiness_routes(
         app,

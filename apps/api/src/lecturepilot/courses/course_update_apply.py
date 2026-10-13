@@ -24,7 +24,13 @@ from lecturepilot.courses.course_update_recovery import (
     locked_course_state,
     retire_committed_course_update,
 )
+from lecturepilot.courses.course_update_routing import (
+    confirmed_routing,
+    lecture_paths,
+    updated_routing,
+)
 from lecturepilot.courses.course_workspace import resolve_course_workspace
+from lecturepilot.sources.course_source_routing import confirm_source_routing
 from lecturepilot.sources.lecture_source_manifest import (
     read_lecture_source_manifest,
     write_lecture_source_manifest,
@@ -84,7 +90,7 @@ def _apply_course_update_locked(
             ]
         }
     )
-    _promote_update(
+    routing_confirmed = _promote_update(
         layout=layout,
         course_id=course_id,
         update_id=update_id,
@@ -99,6 +105,8 @@ def _apply_course_update_locked(
         update_id=update_id,
         applied_files=len(selected_paths),
         affected_lecture_ids=list(dict.fromkeys(affected)),
+        new_lecture_ids=[item for item in dict.fromkeys(affected) if item not in lectures_by_id],
+        routing="confirmed" if routing_confirmed else "needs_review",
         workspace=final_workspace,
     )
 
@@ -134,8 +142,10 @@ def _selected_lecture(workspace, existing, updated, selection):
 
 def _promote_update(
     *, layout, course_id, update_id, workspace, final_workspace, selected_paths, paths_by_lecture
-):
+) -> bool:
+    """Promote the files and metadata atomically; return whether routing stays confirmed."""
     live_index = live_source_index(layout, course_id)
+    previous_routing = confirmed_routing(layout, course_id, live_index, workspace.lectures)
     bundle_files = [item.as_bundle_file() for item in live_index.files]
     manifest_paths = {}
     for lecture_id, selected in paths_by_lecture.items():
@@ -148,10 +158,12 @@ def _promote_update(
         manifest_paths[lecture_id] = (
             {item.path for item in manifest.files} | {item.path for item in inferred} | selected
         )
+    lecture_ids = [item.id for item in final_workspace.lectures]
     metadata = [
         layout.course_source_index_path(course_id),
+        layout.course_source_routing_path(course_id),
         layout.course_root(course_id) / "builder" / "course-workspace.json",
-        *(layout.lecture_source_manifest_path(course_id, item) for item in paths_by_lecture),
+        *(layout.lecture_source_manifest_path(course_id, item) for item in lecture_ids),
     ]
     course_root = layout.course_root(course_id)
     with staged_file_transaction(
@@ -166,6 +178,22 @@ def _promote_update(
         transaction.checkpoint()
         updated_index = live_source_index(layout, course_id)
         write_course_workspace(course_root, final_workspace, replace_lectures=True)
+        routing = previous_routing and updated_routing(
+            previous=previous_routing,
+            previous_lecture_ids={item.id for item in workspace.lectures},
+            index=updated_index,
+            lectures=final_workspace.lectures,
+            paths_by_lecture=paths_by_lecture,
+        )
+        if routing:
+            confirm_source_routing(
+                course_id=course_id,
+                index=updated_index,
+                lectures=final_workspace.lectures,
+                routing_path=layout.course_source_routing_path(course_id),
+                routing=routing,
+            )
+            manifest_paths = {item: set(lecture_paths(routing, item)) for item in lecture_ids}
         for lecture_id, paths in manifest_paths.items():
             write_lecture_source_manifest(
                 layout.lecture_source_manifest_path(course_id, lecture_id),
@@ -175,3 +203,4 @@ def _promote_update(
                 source_index=updated_index,
             )
         mark_course_update_committed(layout.course_update_root(course_id, update_id) / ".applying")
+    return routing is not None

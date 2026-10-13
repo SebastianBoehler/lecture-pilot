@@ -224,9 +224,13 @@ missing from staged upload  -> keep existing
 ```
 
 The owner reviews ambiguous file-to-lecture assignments. Applying an update is
-transactional across uploads, source index, lecture manifests, and schedule;
-on failure, prior state is restored. Apply creates new private drafts for
-affected lectures and never changes a published canvas by itself.
+transactional across uploads, source index, routing, lecture manifests, and
+schedule; on failure, prior state is restored. A confirmed routing is extended
+with the reviewed assignments, new lectures get goals proposed in the background,
+and changed lectures' approved goals turn stale; apply never starts drafts or
+changes a published canvas. Source revisions are lecture-local, so unchanged
+lectures stay current. See [course-updates.md](course-updates.md) for the state
+model, keep-goals and `GET /admin/courses/{course}/lecture-states`.
 
 ```http
 POST   /admin/courses/{course}/updates
