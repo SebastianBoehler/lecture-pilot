@@ -16,6 +16,9 @@ from lecturepilot.learning_design.learning_goal_support import (
 )
 from lecturepilot.learning_design.course_learning_intent_proposal import LearningIntentProposal
 from lecturepilot.learning_design.learning_goal_proposal_run import propose_lecture_goals
+from lecturepilot.learning_design.learning_intent_keep_routes import (
+    register_learning_intent_keep_route,
+)
 from lecturepilot.llm.model_client import ModelExecutionError
 from lecturepilot.llm.providers import ProviderConfigurationError
 from lecturepilot.learning_design.course_practice_design_contract import (
@@ -52,6 +55,14 @@ def register_learning_intent_routes(
     app, *, course_tenant_id, source_document, source_context, source_revision, require_manager
 ):
     register_implementation_change_routes(app, course_tenant_id=course_tenant_id)
+    register_learning_intent_keep_route(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+        source_context=source_context,
+        source_revision=source_revision,
+        require_manager=require_manager,
+    )
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/approve",
