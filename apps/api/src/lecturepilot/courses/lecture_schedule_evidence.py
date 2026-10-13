@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 
 from lecturepilot.courses.lecture_date_extraction import extract_source_date
+from lecturepilot.courses.lecture_title import document_title
 from lecturepilot.sources.course_source_evidence import (
     NORMALIZED_KINDS,
     normalized_source_excerpt,
@@ -17,6 +18,7 @@ MAX_DETAIL_FILES = 36
 MAX_EXCERPT_CHARS = 1200
 TEXT_KINDS = {"code", "json", "latex", "markdown", "notebook", "text"}
 DETAIL_KINDS = {*TEXT_KINDS, *NORMALIZED_KINDS, "pdf"}
+TITLE_KINDS = {"latex", "markdown"}
 
 
 def build_schedule_evidence(
@@ -64,9 +66,15 @@ def _file_detail(item: SourceBundleFile, roots: list[Path]) -> str:
     return (
         f"{base}\n"
         f"  date cue: {date_cue.isoformat() if date_cue else 'none detected'}\n"
+        f"  title cue: {_title_cue(text, item.kind)}\n"
         f"  outline: {_outline(text, item.kind)}\n"
         f"  excerpt: {_compact(text)}"
     )
+
+
+def _title_cue(text: str, kind: str) -> str:
+    title = document_title(text, markdown=kind == "markdown") if kind in TITLE_KINDS else None
+    return title or "none detected"
 
 
 def _read_source_text(path: Path, item: SourceBundleFile, roots: list[Path]) -> str:
