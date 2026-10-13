@@ -25,7 +25,8 @@ volume.
       generations/<lecture-id>/*.json
       practice-designs/<lecture-id>.json
       repairs/<lecture-id>.json
-      source-manifests/<lecture-id>.json
+      source-manifests/<lecture-id>.json      # .alias.json: legacy revision alias
+      goal-proposals/<lecture-id>.json        # background goal-proposal lease
       source-routing.json
       updates/<update-id>/
     analytics/lectures/<lecture-id>/outcome-events.jsonl
