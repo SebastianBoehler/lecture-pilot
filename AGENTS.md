@@ -235,9 +235,15 @@ professor/ profile/ shared/ shell/ speech/ test/
   (remaining notes become draft warnings). A verified `design_conflict` triggers exactly one
   teaching repair; the follow-up job reuses sections whose input fingerprint
   (`section-inputs.json`, `authoring_reuse.py`) is unchanged. Each section prompt sees only its
-  own checkpoint contracts. Professor repair requests regenerate only sections they name. Prose writes formulas
+  own checkpoint contracts. Prose writes formulas
   as `$...$`; LaTeX inside inline code (`canvas_inline_code_math.py`) and source page citations
   in generated tasks (`assessment_prompts.py`) are deterministic, repairable section defects.
+- Change requests (`canvas_change_*.py`, `POST .../canvas/change-request`) start from the ready
+  draft or current publication and regenerate only the sections the professor names (else one
+  structured selection call over titles picks at most four); all other sections are the base's
+  own objects. Same per-section and lecture checks, one critic call over changed sections, one
+  repair each, no teaching repair; a rewritten approved checkpoint fails toward goal review.
+  See `docs/course-updates.md`.
 - Private `builder/authoring-jobs/<lecture>/<generation>/` contains drafts and metrics.
   Status exposes metadata from `builder/authoring-metrics/`, never source-bearing content.
 - Authoring calls have no tools, shell, network or learner-memory access. Approved checkpoints
