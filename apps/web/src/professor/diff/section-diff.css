@@ -1,0 +1,111 @@
+/* Draft review: published canvas against the draft, per section. */
+
+.section-diff {
+  display: grid;
+  gap: 12px;
+}
+
+.section-diff-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.section-diff-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.section-diff-summary li:first-child {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.section-diff-summary li + li::before {
+  padding: 0 8px;
+  color: var(--color-text-tertiary);
+  content: "·" / "";
+}
+
+.section-diff-unchanged-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.section-diff-item {
+  overflow: hidden;
+  border: 1px solid var(--color-border-primary);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--color-bg-primary);
+}
+
+.section-diff-item[data-kind="added"] {
+  border-left-color: var(--color-success);
+}
+
+.section-diff-item[data-kind="removed"] {
+  border-left-color: var(--color-danger);
+}
+
+.section-diff-item[data-kind="changed"] {
+  border-left-color: var(--color-border-strong);
+}
+
+.section-diff-item > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 10px 14px;
+}
+
+.section-diff-item h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.section-diff-kind {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+[data-kind="added"] .section-diff-kind {
+  color: var(--color-success);
+}
+
+[data-kind="removed"] .section-diff-kind {
+  color: var(--color-danger);
+}
+
+.section-diff-meta {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.section-diff-body {
+  display: grid;
+  gap: 6px;
+  padding: 0 14px 12px;
+}
+
+.section-diff-item[data-kind="removed"] .section-diff-body {
+  color: var(--color-text-secondary);
+}
+
+.section-diff-body[data-folded] {
+  padding-bottom: 8px;
+}

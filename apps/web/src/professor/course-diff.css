@@ -1,5 +1,4 @@
-.goal-diff,
-.section-diff {
+.goal-diff {
   display: grid;
   gap: 10px;
 }
@@ -25,20 +24,17 @@
   border-top: 1px solid var(--color-border-primary);
 }
 
-.goal-diff-kind,
-.section-diff-kind {
+.goal-diff-kind {
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 650;
 }
 
-[data-kind="added"] > .goal-diff-kind,
-[data-kind="added"] .section-diff-kind {
+[data-kind="added"] > .goal-diff-kind {
   color: var(--color-success);
 }
 
-[data-kind="removed"] > .goal-diff-kind,
-[data-kind="removed"] .section-diff-kind {
+[data-kind="removed"] > .goal-diff-kind {
   color: var(--color-danger);
 }
 
@@ -58,80 +54,12 @@
   display: block;
 }
 
-.goal-diff-outcome del,
-.section-diff-unit[data-change="removed"] {
+.goal-diff-outcome del {
   color: var(--color-text-secondary);
 }
 
-.goal-diff-outcome ins,
-.section-diff-unit ins {
+.goal-diff-outcome ins {
   text-decoration: none;
-}
-
-.section-diff-item {
-  border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
-  background: var(--color-bg-primary);
-}
-
-.section-diff-item > header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border-primary);
-}
-
-.section-diff-item h4 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.section-diff-renamed {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.section-diff-body {
-  display: grid;
-  max-height: 420px;
-  overflow: auto;
-  padding: 6px 0;
-}
-
-.section-diff-item[data-kind="removed"] .section-diff-body {
-  color: var(--color-text-secondary);
-}
-
-.section-diff-unit {
-  margin: 0;
-  padding: 4px 14px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.section-diff-unit[data-change] {
-  border-left: 3px solid transparent;
-  padding-left: 11px;
-}
-
-.section-diff-unit[data-change="added"] {
-  border-left-color: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 10%, transparent);
-}
-
-.section-diff-unit[data-change="removed"] {
-  border-left-color: var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-}
-
-.section-diff-skipped {
-  margin: 0;
-  padding: 2px 14px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-style: italic;
 }
 
 @media (max-width: 760px) {
