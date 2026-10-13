@@ -1,0 +1,180 @@
+.course-status-chip {
+  --chip-color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--chip-color) 35%, transparent);
+  border-radius: 999px;
+  padding: 2px 10px 2px 8px;
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--chip-color) 10%, var(--color-bg-primary));
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.course-status-chip[data-tone="success"] {
+  --chip-color: var(--color-success);
+}
+
+.course-status-chip[data-tone="progress"] {
+  --chip-color: var(--color-accent-primary);
+}
+
+.course-status-chip[data-tone="attention"] {
+  --chip-color: var(--color-highlight-border);
+}
+
+.course-status-chip[data-tone="danger"] {
+  --chip-color: var(--color-danger);
+}
+
+/* Distinct shapes per tone, so status never depends on color alone. */
+.course-status-glyph {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip-color);
+}
+
+[data-tone="attention"] > .course-status-glyph {
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+[data-tone="danger"] > .course-status-glyph {
+  border-radius: 1px;
+}
+
+[data-tone="progress"] > .course-status-glyph {
+  border: 2px solid var(--chip-color);
+  border-right-color: transparent;
+  background: transparent;
+  animation: course-spin 0.9s linear infinite;
+}
+
+[data-tone="neutral"] > .course-status-glyph {
+  border: 1.5px solid var(--chip-color);
+  background: transparent;
+}
+
+.lecture-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 880px;
+  padding-top: 8px;
+}
+
+.lecture-panel h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.lecture-panel-help {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.lecture-panel [role="alert"] {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+.course-goal-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.course-goal-list p {
+  margin: 2px 0 0;
+  max-width: 70ch;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 760px) {
+  .course-page-header {
+    align-items: stretch;
+  }
+
+  .course-page-actions > .course-row-button[data-primary] {
+    flex: 1 1 100%;
+  }
+
+  .course-lecture-table thead {
+    display: none;
+  }
+
+  .course-lecture-table,
+  .course-lecture-table tbody {
+    display: block;
+  }
+
+  .course-lecture-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 10px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border-primary);
+  }
+
+  .course-lecture-row > * {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .course-lecture-row[data-open] {
+    border-bottom: 0;
+    padding-inline: 10px;
+    background: var(--color-bg-secondary);
+  }
+
+  .course-lecture-row[data-open] > * {
+    background: transparent;
+  }
+
+  .course-lecture-number {
+    width: auto;
+  }
+
+  .course-lecture-date,
+  .course-lecture-status,
+  .course-lecture-action {
+    grid-column: 2;
+  }
+
+  .course-lecture-action {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding-top: 4px;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .course-lecture-action .course-quiet-button {
+    margin-right: 0;
+  }
+
+  .course-lecture-panel-row,
+  .course-lecture-panel-row > td {
+    display: block;
+  }
+
+  .course-lecture-panel-row > td {
+    padding: 0 10px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-spinner,
+  [data-tone="progress"] > .course-status-glyph {
+    animation: none;
+  }
+}

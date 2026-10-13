@@ -8,7 +8,7 @@ import {
   type ProfessorAccessTarget,
 } from "./ProfessorCourseAccessDialog";
 import { ProfessorCourseManager } from "./ProfessorCourseManager";
-import { ProfessorCourseUpdate } from "./ProfessorCourseUpdate";
+import { ProfessorCoursePage } from "./ProfessorCoursePage";
 import { ProfessorShareCourseDialog } from "./ProfessorShareCourseDialog";
 import { deleteCourseWorkspace, listCourseWorkspaces } from "./professorApi";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
@@ -19,26 +19,26 @@ import type {
 } from "../shared/types";
 
 export function ProfessorCourseManagement({
+  courseId,
   onCreateCourse,
   onResumeCourse,
-  onCloseCourseUpdate,
+  onCloseCourse = () => undefined,
+  onOpenCourse = () => undefined,
   onPreviewLecture = () => undefined,
-  onUpdateCourse,
   session,
-  updateCourseId,
   onWorkspaceDeleted,
 }: {
+  courseId?: string;
   onCreateCourse: () => void;
   onResumeCourse: (workspace: ManagedCourseWorkspaceResult) => void;
-  onCloseCourseUpdate?: () => void;
+  onCloseCourse?: () => void;
+  onOpenCourse?: (courseId: string) => void;
   onPreviewLecture?: (courseId: string, lecture: CourseWorkspaceResult["lectures"][number]) => void;
-  onUpdateCourse?: (courseId: string) => void;
   session: LoginSession;
-  updateCourseId?: string;
   onWorkspaceDeleted: (courseId: string) => void;
 }) {
   const { t } = useI18n();
-  const [workspaces, setWorkspaces] = useState<ManagedCourseWorkspaceResult[]>([]);
+  const [workspaces, setWorkspaces] = useState<ManagedCourseWorkspaceResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [accessTarget, setAccessTarget] = useState<ProfessorAccessTarget | null>(null);
@@ -53,27 +53,33 @@ export function ProfessorCourseManagement({
     void refreshCoursesFromSession();
   }, [session]);
 
-  const updatingWorkspace = updateCourseId
-    ? (workspaces.find((item) => item.course.id === updateCourseId) ?? null)
-    : null;
-
-  if (updatingWorkspace && onCloseCourseUpdate) {
+  if (courseId) {
+    const workspace = workspaces?.find((item) => item.course.id === courseId);
+    if (workspace) {
+      return (
+        <ProfessorCoursePage
+          workspace={workspace}
+          session={session}
+          onBack={onCloseCourse}
+          onCourseChanged={() => void refreshCourses()}
+          onPreviewLecture={onPreviewLecture}
+          onResumeCourse={onResumeCourse}
+        />
+      );
+    }
     return (
-      <ProfessorCourseUpdate
-        session={session}
-        workspace={updatingWorkspace}
-        onBack={() => {
-          onCloseCourseUpdate();
-          void refreshCourses();
-        }}
-        onWorkspaceUpdated={(updated) => {
-          setWorkspaces((current) =>
-            current.map((item) =>
-              item.course.id === updated.course.id ? { ...item, ...updated } : item,
-            ),
-          );
-        }}
-      />
+      <main className="professor-screen course-page">
+        <button className="course-back" type="button" onClick={onCloseCourse}>
+          {t("coursePage.back")}
+        </button>
+        {workspaces === null && !error ? (
+          <p role="status">{t("coursePage.loading")}</p>
+        ) : (
+          <p className="form-error" role="alert">
+            {error ?? t("coursePage.notFound")}
+          </p>
+        )}
+      </main>
     );
   }
 
@@ -108,11 +114,9 @@ export function ProfessorCourseManagement({
           void refreshCourses();
         }}
         onPreviewLecture={onPreviewLecture}
-        onUpdateCourse={(courseId) => {
-          onUpdateCourse?.(courseId);
-        }}
+        onOpenCourse={onOpenCourse}
         session={session}
-        workspaces={workspaces}
+        workspaces={workspaces ?? []}
       />
       {sharing ? (
         <ProfessorShareCourseDialog
@@ -163,7 +167,7 @@ export function ProfessorCourseManagement({
     setDeletingCourseId(courseId);
     await run("delete-course", async () => {
       await deleteCourseWorkspace(courseId, session);
-      setWorkspaces((current) => current.filter((item) => item.course.id !== courseId));
+      setWorkspaces((current) => current?.filter((item) => item.course.id !== courseId) ?? null);
       onWorkspaceDeleted(courseId);
       return t("professor.deletedNotice", { courseId });
     });

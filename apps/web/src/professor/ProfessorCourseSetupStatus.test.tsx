@@ -66,7 +66,9 @@ it("labels setup progress and resumes only unfinished courses", async () => {
   expect(screen.getByText("1 of 2 lectures published")).toBeInTheDocument();
   expect(screen.getByText("Published")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Continue setting up Live course" })).toBeNull();
-  expect(screen.getAllByRole("button", { name: "Update" })).toHaveLength(2);
+  expect(screen.getAllByRole("button", { name: /^Open / })).toHaveLength(2);
+  expect(screen.queryByRole("button", { name: "Open Draft course" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Update" })).toBeNull();
 
   await user.click(screen.getByRole("button", { name: "Continue setting up Draft course" }));
   expect(resume.mock.calls[0][0].course.id).toBe("draft");

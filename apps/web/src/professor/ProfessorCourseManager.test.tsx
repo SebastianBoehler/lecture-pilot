@@ -17,7 +17,7 @@ function manager(isLoading: boolean) {
       onPreviewLecture={vi.fn()}
       onResumeCourse={vi.fn()}
       onShareCourse={vi.fn()}
-      onUpdateCourse={vi.fn()}
+      onOpenCourse={vi.fn()}
       session={{ username: "professor-demo", term: "2026", courses: [] }}
       workspaces={[]}
     />
