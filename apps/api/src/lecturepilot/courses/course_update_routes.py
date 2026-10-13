@@ -17,6 +17,8 @@ from lecturepilot.courses.course_update import (
 from lecturepilot.courses.course_update_analysis import analyze_course_update
 from lecturepilot.courses.course_update_apply import apply_course_update
 from lecturepilot.courses.course_update_recovery import locked_course_state
+from lecturepilot.courses.lecture_state_models import CourseLectureStates
+from lecturepilot.courses.lecture_states import course_lecture_states
 from lecturepilot.courses.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.courses.course_update_models import (
     CourseUpdateAnalysis,
@@ -42,6 +44,19 @@ def register_course_update_routes(
     course_tenant_id: str,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
+    @app.get(
+        "/admin/courses/{course_id}/lecture-states",
+        response_model=CourseLectureStates,
+    )
+    def lecture_states(
+        course_id: str,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> CourseLectureStates:
+        """Every lecture's sources, goals, draft and next step; no model calls or parsing."""
+        _require_manager(request, context, course_id, course_tenant_id)
+        return course_lecture_states(app, course_id)
+
     @app.post(
         "/admin/courses/{course_id}/updates",
         response_model=CourseUpdateCreated,

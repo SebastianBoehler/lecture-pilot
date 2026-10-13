@@ -47,6 +47,8 @@ def test_apply_extends_confirmed_routing_and_proposes_goals_for_new_lectures(
     # The routing is current, so the new lecture's sources are usable right away.
     readiness = _get(client, "lectures/lecture-03/practice-design/readiness")
     assert readiness["ready_for_generation"] is False
+    states = {item["lecture_id"]: item for item in _get(client, "lecture-states")["lectures"]}
+    assert states["lecture-03"]["goals"] == "proposing"
 
 
 def test_files_assigned_to_every_existing_lecture_become_course_wide(
@@ -85,6 +87,9 @@ def test_unconfirmed_routing_still_requires_confirmation_after_apply(
 
     assert applied["routing"] == "needs_review"
     assert started == []
+    states = _get(client, "lecture-states")
+    assert states["routing"] == "needs_review"
+    assert {item["next_action"] for item in states["lectures"]} == {"confirm_routing"}
 
 
 def _record_proposals(monkeypatch) -> list:
