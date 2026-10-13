@@ -139,8 +139,8 @@ def _draft_state(
         return "published", None
     approved_at = design.learning_intent.approval.approved_at
     if job is not None and job.status != "completed" and job.updated_at >= approved_at:
-        if job.status == "running":
-            return "failed", _INTERRUPTED
+        if job.status == "running" or job.error_code == "interrupted":
+            return "failed", job.error_detail or _INTERRUPTED
         return "failed", job.error_detail or "Draft generation failed. Retry the draft."
     return "none", None
 
