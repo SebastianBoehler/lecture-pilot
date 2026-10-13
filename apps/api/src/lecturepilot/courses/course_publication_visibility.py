@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from lecturepilot.canvas.course_canvas_context import InvalidPublishedCanvasContextError
-from lecturepilot.core.metadata_events import emit_metadata_event
 
 
 def published_canvas_is_ready(
@@ -16,14 +15,8 @@ def published_canvas_is_ready(
             course_id=course_id,
             lecture_id=lecture_id,
         )
-    except InvalidPublishedCanvasContextError as exc:
+    except InvalidPublishedCanvasContextError:
+        # The workspace reports an invalid snapshot once, when it validates it.
         if not invalid_as_unavailable:
             raise
-        emit_metadata_event(
-            "canvas.publication_invalid",
-            error=True,
-            course_id=course_id,
-            lecture_id=lecture_id,
-            exception_type=type(exc.__cause__ or exc).__name__,
-        )
         return False

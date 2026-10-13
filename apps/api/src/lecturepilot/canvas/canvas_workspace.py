@@ -15,7 +15,11 @@ from lecturepilot.canvas.canvas_workspace_config import (
 from lecturepilot.canvas.course_canvas_store import CourseCanvasStore
 from lecturepilot.canvas.published_snapshot_validity import PublishedSnapshotValidity
 from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
-from lecturepilot.canvas.course_canvas_context import PublishedCanvasSnapshot
+from lecturepilot.canvas.course_canvas_context import (
+    InvalidPublishedCanvasContextError,
+    PublishedCanvasSnapshot,
+)
+from lecturepilot.core.metadata_events import emit_metadata_event
 from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.courses.course_update_recovery import locked_course_state
 from lecturepilot.courses.course_media import apply_course_media
@@ -193,15 +197,25 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         return self.course_canvas_store.publication(course_id=course_id, lecture_id=lecture_id)
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
-        return self.published_validity.check(
-            self.course_canvas_store.path(course_id, lecture_id),
-            lambda: (
-                self.course_canvas_store.read_current_published_snapshot(
+        def validate() -> bool:
+            try:
+                snapshot = self.course_canvas_store.read_current_published_snapshot(
+                    course_id=course_id, lecture_id=lecture_id
+                )
+            except InvalidPublishedCanvasContextError as exc:
+                # Reported when validated, not on every cached listing of the same snapshot.
+                emit_metadata_event(
+                    "canvas.publication_invalid",
+                    error=True,
                     course_id=course_id,
                     lecture_id=lecture_id,
+                    exception_type=type(exc.__cause__ or exc).__name__,
                 )
-                is not None
-            ),
+                raise
+            return snapshot is not None
+
+        return self.published_validity.check(
+            self.course_canvas_store.path(course_id, lecture_id), validate
         )
 
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
