@@ -67,8 +67,6 @@ export const coursePageMessages = {
     "coursePage.draft.firstVersion": "Not published yet, so every section is new.",
     "coursePage.draft.loading": "Loading draft…",
     "coursePage.draft.noChanges": "The draft has the same content as the published version.",
-    "coursePage.draft.unchanged": "{count} unchanged sections",
-    "coursePage.draft.unchangedOne": "1 unchanged section",
     "coursePage.draft.added": "New section",
     "coursePage.draft.removed": "Removed section",
     "coursePage.draft.changed": "Changed section",
@@ -149,8 +147,6 @@ export const coursePageMessages = {
     "coursePage.draft.loading": "Entwurf wird geladen …",
     "coursePage.draft.noChanges":
       "Der Entwurf hat denselben Inhalt wie die veröffentlichte Fassung.",
-    "coursePage.draft.unchanged": "{count} unveränderte Abschnitte",
-    "coursePage.draft.unchangedOne": "1 unveränderter Abschnitt",
     "coursePage.draft.added": "Neuer Abschnitt",
     "coursePage.draft.removed": "Entfernter Abschnitt",
     "coursePage.draft.changed": "Geänderter Abschnitt",

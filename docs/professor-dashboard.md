@@ -37,6 +37,11 @@ in the lecture row; file-assignment confirmation hands over to the builder. "Upl
 materials" (`CourseUpdateDialog.tsx`) compares and applies an update without starting drafts.
 The page polls lecture states through `polling.ts` only while goals or drafts are generating.
 
+The draft diff (`CanvasSectionDiffView.tsx`, `professor/diff/`) opens with a change summary
+and renders Markdown and LaTeX through the lazy canvas `MathText` chunk. `sectionShape.ts`
+shows lightly edited sections inline with word-level changes (`wordDiff.ts`) and folded
+unchanged paragraphs, and rewritten sections as published and draft columns side by side.
+
 UI ownership: `ProfessorPerformanceDashboard` discovers courses;
 `ProfessorCoursePerformance` loads their course/lecture analytics;
 `UsageActivityChart` renders `usageHistoryData` calendar totals. No provider or
