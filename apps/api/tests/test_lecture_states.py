@@ -181,3 +181,18 @@ def test_lecture_states_require_a_course_manager(tmp_path) -> None:
         f"/admin/courses/{COURSE_ID}/lecture-states", headers=student_headers()
     )
     assert response.status_code == 403
+
+
+def test_draft_errors_hide_internal_file_paths() -> None:
+    from lecturepilot.courses.lecture_states import readable_draft_error
+
+    detail = (
+        "/draft/lecture02-eng-why-iterate.md: Checkpoint block lecture02-why-iterate-check "
+        "must contain a direct question or concrete task."
+    )
+    assert readable_draft_error(detail) == (
+        "Checkpoint block lecture02-why-iterate-check must contain a direct question or "
+        "concrete task."
+    )
+    assert readable_draft_error("Provider timed out.") == "Provider timed out."
+    assert readable_draft_error(None) is None

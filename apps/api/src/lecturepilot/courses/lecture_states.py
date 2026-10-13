@@ -140,9 +140,21 @@ def _draft_state(
     approved_at = design.learning_intent.approval.approved_at
     if job is not None and job.status != "completed" and job.updated_at >= approved_at:
         if job.status == "running" or job.error_code == "interrupted":
-            return "failed", job.error_detail or _INTERRUPTED
-        return "failed", job.error_detail or "Draft generation failed. Retry the draft."
+            return "failed", readable_draft_error(job.error_detail) or _INTERRUPTED
+        return "failed", (
+            readable_draft_error(job.error_detail) or "Draft generation failed. Retry the draft."
+        )
     return "none", None
+
+
+_INTERNAL_PATH_PREFIX = re.compile(r"^/[\w./-]+\.(?:md|json|yaml):\s*")
+
+
+def readable_draft_error(detail: str | None) -> str | None:
+    """Drop internal draft file paths from a stored failure detail shown to professors."""
+    if not detail:
+        return None
+    return _INTERNAL_PATH_PREFIX.sub("", detail.strip()) or None
 
 
 def _publication_current(publication: CanvasPublicationMetadata, design: PracticeDesign) -> bool:
