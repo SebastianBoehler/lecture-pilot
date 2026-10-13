@@ -1,0 +1,49 @@
+/* The builder's goal editor reused inside a course page lecture panel. */
+.lecture-panel .practice-design-lecture {
+  display: grid;
+  gap: 12px;
+}
+
+.lecture-panel .learning-intent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.lecture-panel .learning-intent-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 6px var(--control-padding-x);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.lecture-panel .learning-intent-actions button:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-secondary);
+}
+
+.lecture-panel .learning-intent-actions .primary-action {
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.lecture-panel .learning-intent-actions .primary-action:hover:not(:disabled) {
+  border-color: var(--color-accent-hover);
+  background: var(--color-accent-hover);
+}
+
+.lecture-panel .learning-intent-actions button:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}

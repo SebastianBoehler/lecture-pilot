@@ -1,5 +1,6 @@
 .course-page {
   display: grid;
+  align-content: start;
   gap: 20px;
   width: min(1120px, calc(100% - 32px));
 }

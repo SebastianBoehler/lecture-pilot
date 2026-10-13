@@ -25,6 +25,7 @@
 @import "./professor/professor-course-manager.css";
 @import "./professor/course-page.css";
 @import "./professor/course-page-panels.css";
+@import "./professor/course-goal-editor.css";
 @import "./professor/course-diff.css";
 @import "./professor/course-update-dialog.css";
 @import "./professor/professor-course-access.css";

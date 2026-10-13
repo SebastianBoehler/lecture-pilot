@@ -93,6 +93,7 @@ export function CourseGoalReviewPanel({
             pending={pending}
             stale={false}
             conflict={conflict}
+            primaryApprove
             onChange={setDraft}
             onSave={() =>
               void run(() =>
