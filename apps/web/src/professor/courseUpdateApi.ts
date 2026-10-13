@@ -1,5 +1,4 @@
-import { apiUrl, readApiError } from "../shared/api";
-import { authRequestInit } from "../shared/authz";
+import { apiRequest } from "../shared/apiRequest";
 import type {
   CourseUpdateAnalysis,
   CourseUpdateApplyResult,
@@ -7,16 +6,18 @@ import type {
 } from "./courseUpdateTypes";
 import type { LoginSession } from "../shared/types";
 
-export async function createCourseUpdate(courseId: string, session: LoginSession) {
-  return request<{ course_id: string; update_id: string }>(
-    `/admin/courses/${courseId}/updates`,
+const base = (courseId: string) => `/admin/courses/${encodeURIComponent(courseId)}/updates`;
+
+export function createCourseUpdate(courseId: string, session: LoginSession) {
+  return apiRequest<{ course_id: string; update_id: string }>(
     session,
-    { method: "POST" },
+    base(courseId),
     "Course update could not be started.",
+    { method: "POST" },
   );
 }
 
-export async function uploadCourseUpdateMaterial(input: {
+export function uploadCourseUpdateMaterial(input: {
   courseId: string;
   updateId: string;
   path: string;
@@ -26,38 +27,38 @@ export async function uploadCourseUpdateMaterial(input: {
   const body = new FormData();
   body.append("path", input.path);
   body.append("file", input.file);
-  return request<{ path: string; kind: string; size_bytes: number }>(
-    `/admin/courses/${input.courseId}/updates/${input.updateId}/materials`,
+  return apiRequest<{ path: string; kind: string; size_bytes: number }>(
     input.session,
-    { method: "POST", body },
+    `${base(input.courseId)}/${input.updateId}/materials`,
     "Course update upload failed.",
+    { method: "POST", body },
   );
 }
 
-export async function getCourseUpdate(courseId: string, updateId: string, session: LoginSession) {
-  return request<CourseUpdateAnalysis>(
-    `/admin/courses/${courseId}/updates/${updateId}`,
+export function getCourseUpdate(courseId: string, updateId: string, session: LoginSession) {
+  return apiRequest<CourseUpdateAnalysis>(
     session,
-    {},
+    `${base(courseId)}/${updateId}`,
     "Course update comparison failed.",
   );
 }
 
-export async function applyCourseUpdate(
+/** Applies the reviewed update; the backend routes its files and proposes goals for new lectures. */
+export function applyCourseUpdate(
   courseId: string,
   updateId: string,
   lectures: CourseUpdateLectureSelection[],
   session: LoginSession,
 ) {
-  return request<CourseUpdateApplyResult>(
-    `/admin/courses/${courseId}/updates/${updateId}/apply`,
+  return apiRequest<CourseUpdateApplyResult>(
     session,
+    `${base(courseId)}/${updateId}/apply`,
+    "Course update could not be applied.",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lectures }),
     },
-    "Course update could not be applied.",
   );
 }
 
@@ -66,24 +67,10 @@ export async function discardCourseUpdate(
   updateId: string,
   session: LoginSession,
 ) {
-  const response = await fetch(
-    apiUrl(`/admin/courses/${courseId}/updates/${updateId}`),
-    authRequestInit(session, { method: "DELETE" }),
+  await apiRequest(
+    session,
+    `${base(courseId)}/${updateId}`,
+    "Course update could not be discarded.",
+    { method: "DELETE" },
   );
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(readApiError(payload, "Course update could not be discarded."));
-  }
-}
-
-async function request<T>(
-  path: string,
-  session: LoginSession,
-  init: RequestInit,
-  fallback: string,
-): Promise<T> {
-  const response = await fetch(apiUrl(path), authRequestInit(session, init));
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(readApiError(payload, fallback));
-  return payload as T;
 }

@@ -28,6 +28,15 @@ measure learning effectiveness.
 Course management keeps course titles, term, lecture counts and access information.
 Internal course IDs and repeated instructor identifiers are omitted from the list.
 
+A course with a published lecture opens its course page (`/professor/courses/<id>`,
+`ProfessorCoursePage.tsx`). The page lists every lecture with one status chip and at most
+one next step, derived from `GET /admin/courses/<id>/lecture-states` (`courseLectureStatus.ts`).
+Goal reviews (keep or regenerate after a source change, with a goal comparison) and draft
+reviews (a section diff against the published canvas, then "Approve & publish") open inline
+in the lecture row; file-assignment confirmation hands over to the builder. "Upload changed
+materials" (`CourseUpdateDialog.tsx`) compares and applies an update without starting drafts.
+The page polls lecture states through `polling.ts` only while goals or drafts are generating.
+
 UI ownership: `ProfessorPerformanceDashboard` discovers courses;
 `ProfessorCoursePerformance` loads their course/lecture analytics;
 `UsageActivityChart` renders `usageHistoryData` calendar totals. No provider or

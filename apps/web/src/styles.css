@@ -23,9 +23,12 @@
 @import "./professor/professor-actions.css";
 @import "./professor/professor-course-match.css";
 @import "./professor/professor-course-manager.css";
+@import "./professor/course-page.css";
+@import "./professor/course-page-panels.css";
+@import "./professor/course-diff.css";
+@import "./professor/course-update-dialog.css";
 @import "./professor/professor-course-access.css";
 @import "./professor/professor-learner-preview.css";
-@import "./professor/course-update.css";
 @import "./professor/professor-flow.css";
 @import "./professor/professor-canvas-review.css";
 @import "./professor/professor-upload.css";

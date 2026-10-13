@@ -438,6 +438,11 @@ professor/ profile/ shared/ shell/ speech/ test/
   step. "Create course" there always starts empty; the builder names the course in progress.
   Each lecture drafts as soon as its goals are approved (a changed, re-approved plan drafts
   again); ready lectures are approved and published independently.
+- Courses with a published lecture "Open" the course page `/professor/courses/<id>`
+  (`ProfessorCoursePage.tsx`): one status and one next step per lecture from
+  `GET .../lecture-states`, inline goal and draft reviews, and "Upload changed materials"
+  (`CourseUpdateDialog.tsx`, compare and apply only). There is no separate update page.
+  See `docs/professor-dashboard.md`.
 - Course support requests: unmatched Alma/ILIAS courses in the student dashboard offer "Request
   LecturePilot" (`CourseSupportRequest.tsx`, `courseSupportApi.ts`) with an aggregate count; platform
   admins (`tenant_admin`) get the "Course demand" page (`admin/CourseDemandPage.tsx`,
