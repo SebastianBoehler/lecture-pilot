@@ -64,7 +64,7 @@ async def generate_course_canvas_draft(
         ) as generation_span,
     ):
         with observability.tool_span("course_canvas_generation", stage="source_resolve", **common):
-            source, source_revision, practice_design, ownership = await _run_source_prep(
+            source, source_revision, practice_design, ownership = await run_source_prep(
                 partial(
                     ownership_store.begin_owned_generation_source,
                     app.state.canvas_workspace.layout,
@@ -89,7 +89,7 @@ async def generate_course_canvas_draft(
             repair_failure_detail,
             repair_record.failure_detail if repair_record else None,
         )
-        output_language = _canvas_language(app, course_id)
+        output_language = canvas_language(app, course_id)
         with observability.tool_span("course_canvas_generation", stage="model_plan", **common):
             with model_usage_scope(
                 actor_user_id=context.user_id,
@@ -173,7 +173,7 @@ async def repair_targeted_course_canvas_draft(
             **common,
         ) as repair_span,
     ):
-        source, source_revision, practice_design, ownership = await _run_source_prep(
+        source, source_revision, practice_design, ownership = await run_source_prep(
             partial(
                 ownership_store.begin_owned_generation_source,
                 app.state.canvas_workspace.layout,
@@ -190,7 +190,7 @@ async def repair_targeted_course_canvas_draft(
         media_root = app.state.canvas_workspace.course_media_root(course_id)
         source = course_media_evidence(source, media_root)
         source = filter_source_document_for_planning(source)
-        output_language = _canvas_language(app, course_id)
+        output_language = canvas_language(app, course_id)
         try:
             with model_usage_scope(
                 actor_user_id=context.user_id,
@@ -239,7 +239,7 @@ async def repair_targeted_course_canvas_draft(
         return document
 
 
-async def _run_source_prep(
+async def run_source_prep(
     operation: Callable[
         [], tuple[CanvasDocument, str, PracticeDesign, ownership_store.CanvasGenerationOwnership]
     ],
@@ -247,7 +247,7 @@ async def _run_source_prep(
     return await to_thread.run_sync(operation, limiter=_source_prep_limiter)
 
 
-def _canvas_language(app: FastAPI, course_id: str) -> str:
+def canvas_language(app: FastAPI, course_id: str) -> str:
     workspace = read_course_workspace(
         app.state.canvas_workspace.course_media_root(course_id),
         course_id,

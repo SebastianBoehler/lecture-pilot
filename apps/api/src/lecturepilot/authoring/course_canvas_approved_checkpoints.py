@@ -7,6 +7,9 @@ from lecturepilot.learning_design.course_practice_design_models import (
     PracticeTarget,
 )
 
+# Deterministic marker of a generated block that tried to write an approved checkpoint.
+RESERVED_CHECKPOINT_DEFECT = "uses an id reserved for server-owned approved checkpoints"
+
 
 def section_practice_targets(
     section: CanvasSection, design: PracticeDesign, extra_blocks: Sequence[CanvasBlock] = ()
@@ -34,8 +37,7 @@ def assemble_approved_checkpoints(
                 "checkpoint. Do not rewrite approved tasks."
             )
             raise CanvasGenerationRepairableError(
-                f"Block {block.id!r} uses an id reserved for server-owned approved checkpoints. "
-                + repair,
+                f"Block {block.id!r} {RESERVED_CHECKPOINT_DEFECT}. " + repair,
                 section_id=section.id,
                 block_id=block.id,
             )

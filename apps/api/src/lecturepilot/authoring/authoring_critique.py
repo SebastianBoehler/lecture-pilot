@@ -13,9 +13,10 @@ from lecturepilot.core.metadata_events import emit_metadata_event
 from lecturepilot.sources.source_warnings import compact_source_warnings
 
 
-async def critique_document(job, workspace, metrics) -> AuthoringCritique:
+async def critique_document(job, workspace, metrics, document=None) -> AuthoringCritique:
+    """Review `document` (default: the whole workspace lecture) once."""
     job.authorize()
-    document = workspace.document()
+    document = document or workspace.document()
     metrics.quality_reviews += 1
     issues = await job.reviewer.review(
         settings=job.settings,
