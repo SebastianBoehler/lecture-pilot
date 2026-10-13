@@ -76,6 +76,31 @@ def test_invalid_publication_does_not_block_other_course_discovery(tmp_path: Pat
     assert [item.status_code for item in strict_responses] == [409, 409, 409, 409]
 
 
+def test_invalid_publication_is_reported_once_per_snapshot(tmp_path: Path, caplog) -> None:
+    client = _client(tmp_path)
+    _write_workspace(client, course_id="broken-course")
+    publish_course_canvas(
+        client.app.state.canvas_workspace, _document("broken-course", "lecture-01")
+    )
+    index = (
+        client.app.state.canvas_workspace.course_canvas_store.path("broken-course", "lecture-01")
+        / "index.md"
+    )
+    index.write_bytes(b"\xff\xfe")
+    student = student_headers(course_ids=("broken-course",))
+
+    with caplog.at_level(logging.ERROR, logger=LOGGER_NAME):
+        for _ in range(3):
+            assert client.get("/courses", headers=student).status_code == 200
+    assert caplog.text.count('"event":"canvas.publication_invalid"') == 1
+
+    caplog.clear()
+    index.write_bytes(b"\xff\xfe\xff")
+    with caplog.at_level(logging.ERROR, logger=LOGGER_NAME):
+        assert client.get("/courses", headers=student).status_code == 200
+    assert caplog.text.count('"event":"canvas.publication_invalid"') == 1
+
+
 def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _write_workspace(client, course_id="future-course", lecture_date=date(2099, 1, 1))
