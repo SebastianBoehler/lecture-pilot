@@ -13,6 +13,7 @@ from lecturepilot.canvas.canvas_workspace_config import (
     SEEDED_COURSE_ID,
 )
 from lecturepilot.canvas.course_canvas_store import CourseCanvasStore
+from lecturepilot.canvas.published_snapshot_validity import PublishedSnapshotValidity
 from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
 from lecturepilot.canvas.course_canvas_context import PublishedCanvasSnapshot
 from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
@@ -41,6 +42,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         self.material_root = material_root or _default_material_root()
         self.layout = StorageLayout(self.workspace_root, tenant_id=tenant_id)
         self.course_canvas_store = CourseCanvasStore(self.layout)
+        self.published_validity = PublishedSnapshotValidity()
         self.asset_store = CanvasAssetStore(layout=self.layout, material_root=self.material_root)
 
     def asset_path(
@@ -191,12 +193,15 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         return self.course_canvas_store.publication(course_id=course_id, lecture_id=lecture_id)
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
-        return (
-            self.course_canvas_store.read_current_published_snapshot(
-                course_id=course_id,
-                lecture_id=lecture_id,
-            )
-            is not None
+        return self.published_validity.check(
+            self.course_canvas_store.path(course_id, lecture_id),
+            lambda: (
+                self.course_canvas_store.read_current_published_snapshot(
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                )
+                is not None
+            ),
         )
 
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
