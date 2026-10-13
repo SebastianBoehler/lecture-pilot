@@ -1,71 +1,55 @@
-import { useI18n } from "../i18n/i18n";
-import { collapseUnchanged, type SectionDiff } from "./canvasSectionDiff";
+import { useState } from "react";
 
-/** Changed, added and removed sections; unchanged ones fold into one count. */
+import { useI18n } from "../i18n/i18n";
+import type { SectionDiff } from "./canvasSectionDiff";
+import { SectionDiffItem } from "./diff/SectionDiffItem";
+import "./diff/section-diff.css";
+
+/** Per-lecture change summary, then each changed section; unchanged ones on request. */
 export function CanvasSectionDiffView({ sections }: { sections: readonly SectionDiff[] }) {
   const { t } = useI18n();
-  const unchanged = sections.filter((section) => section.kind === "unchanged").length;
-  const changes = sections.filter((section) => section.kind !== "unchanged");
-  if (!changes.length)
+  const [showUnchanged, setShowUnchanged] = useState(false);
+  const count = (kind: SectionDiff["kind"]) =>
+    sections.filter((section) => section.kind === kind).length;
+  const unchanged = count("unchanged");
+  if (unchanged === sections.length)
     return <p className="lecture-panel-help">{t("coursePage.draft.noChanges")}</p>;
+  const changed = count("changed");
+  const summary = [
+    changed === 1
+      ? t("courseDiff.summary.changedOne")
+      : changed
+        ? t("courseDiff.summary.changed", { count: changed })
+        : null,
+    count("added") ? t("courseDiff.summary.added", { count: count("added") }) : null,
+    count("removed") ? t("courseDiff.summary.removed", { count: count("removed") }) : null,
+    unchanged ? t("courseDiff.summary.unchanged", { count: unchanged }) : null,
+  ].filter((item): item is string => Boolean(item));
+  const shown = showUnchanged
+    ? sections
+    : sections.filter((section) => section.kind !== "unchanged");
   return (
     <div className="section-diff">
-      {changes.map((section) => (
-        <article
-          className="section-diff-item"
-          data-kind={section.kind}
-          key={`${section.kind}-${section.id}`}
-        >
-          <header>
-            <span className="section-diff-kind">{t(`coursePage.draft.${section.kind}`)}</span>
-            <h4>{section.title}</h4>
-            {section.previousTitle ? (
-              <span className="section-diff-renamed">
-                {t("coursePage.draft.renamed", { title: section.previousTitle })}
-              </span>
-            ) : null}
-          </header>
-          <div className="section-diff-body">
-            {(section.kind === "changed" ? collapseUnchanged(section.units) : section.units).map(
-              (unit, index) =>
-                unit.kind === "skipped" ? (
-                  <p className="section-diff-skipped" key={index}>
-                    {unit.count === 1
-                      ? t("coursePage.draft.skippedOne")
-                      : t("coursePage.draft.skipped", { count: unit.count })}
-                  </p>
-                ) : unit.kind === "same" ? (
-                  <p className="section-diff-unit" key={index}>
-                    {unit.text}
-                  </p>
-                ) : section.kind === "changed" ? (
-                  <p className="section-diff-unit" data-change={unit.kind} key={index}>
-                    <span className="visually-hidden">
-                      {t(
-                        unit.kind === "added"
-                          ? "coursePage.draft.addedText"
-                          : "coursePage.draft.removedText",
-                      )}
-                      :{" "}
-                    </span>
-                    {unit.kind === "added" ? <ins>{unit.text}</ins> : <del>{unit.text}</del>}
-                  </p>
-                ) : (
-                  <p className="section-diff-unit" key={index}>
-                    {unit.text}
-                  </p>
-                ),
-            )}
-          </div>
-        </article>
+      <div className="section-diff-overview">
+        <ul aria-label={t("courseDiff.summaryLabel")} className="section-diff-summary">
+          {summary.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        {unchanged ? (
+          <label className="section-diff-unchanged-toggle">
+            <input
+              checked={showUnchanged}
+              onChange={(event) => setShowUnchanged(event.target.checked)}
+              type="checkbox"
+            />
+            {t("courseDiff.showUnchanged")}
+          </label>
+        ) : null}
+      </div>
+      {shown.map((section) => (
+        <SectionDiffItem key={`${section.kind}-${section.id}`} section={section} />
       ))}
-      {unchanged ? (
-        <p className="section-diff-skipped">
-          {unchanged === 1
-            ? t("coursePage.draft.unchangedOne")
-            : t("coursePage.draft.unchanged", { count: unchanged })}
-        </p>
-      ) : null}
     </div>
   );
 }

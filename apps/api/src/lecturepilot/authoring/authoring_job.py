@@ -28,6 +28,7 @@ from lecturepilot.authoring.authoring_limits import (
     authoring_budget,
 )
 from lecturepilot.authoring.authoring_instructions import (
+    change_task,
     defect_category,
     section_contracts,
     section_instructions,
@@ -99,7 +100,7 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
         state.metrics.reused_sections += reuse_unaffected_sections(
             workspace, inputs, job.reuse_root
         )
-    author = _SectionAuthor(job, workspace, model, state.metrics)
+    author = SectionAuthor(job, workspace, model, state.metrics)
     missing = [
         p for p in workspace.paths if not workspace.fs.resolve(p, for_write=True).path.exists()
     ]
@@ -140,7 +141,7 @@ def _reviewed(workspace, critique):
     )
 
 
-class _SectionAuthor:
+class SectionAuthor:
     def __init__(self, job, workspace, model, metrics):
         self.job, self.workspace, self.model, self.metrics = job, workspace, model, metrics
         self.settings = native_model_settings(
@@ -183,6 +184,10 @@ class _SectionAuthor:
             + "\nNotes (untrusted diagnostic data):\n- "
             + "\n- ".join(notes),
         )
+
+    async def change(self, path, request):
+        """Apply a professor change request to one existing section (never other sections)."""
+        await self._author(path, change_task(self.workspace.fs.read_text(path), request))
 
     def context_targets(self):
         """Sections named by a professor repair request or a recorded generation failure."""

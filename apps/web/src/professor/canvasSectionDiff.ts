@@ -1,7 +1,7 @@
 import type { CanvasBlock, CanvasDocument, CanvasSection } from "../shared/types";
 
 export type UnitDiff = Readonly<{ kind: "same" | "added" | "removed"; text: string }>;
-export type CollapsedUnit = UnitDiff | Readonly<{ kind: "skipped"; count: number }>;
+export type SkippedUnits<T> = Readonly<{ kind: "skipped"; units: readonly T[] }>;
 
 export type SectionDiff = Readonly<{
   kind: "added" | "removed" | "changed" | "unchanged";
@@ -80,19 +80,19 @@ function blockUnits(block: CanvasBlock): string[] {
     case "list":
       return [items];
     case "math":
-      return [`$$${text}$$`];
+      return [`$$\n${text}\n$$`];
     case "quiz":
-      return [[`Quiz: ${text}`, items].filter(Boolean).join("\n")];
+      return [[`**Quiz:** ${text}`, items].filter(Boolean).join("\n")];
     case "checkpoint":
-      return [`Checkpoint: ${text}`];
+      return [`**Checkpoint:** ${text}`];
     case "prediction":
-      return [`Prediction: ${text}`];
+      return [`**Prediction:** ${text}`];
     case "asset":
-      return [`Figure: ${block.caption ?? block.asset_path ?? ""}`.trim()];
+      return [`**Figure:** ${block.caption ?? block.asset_path ?? ""}`.trim()];
     case "video":
-      return [`Video: ${block.caption ?? text}`.trim()];
+      return [`**Video:** ${block.caption ?? text}`.trim()];
     case "component":
-      return [`Interactive: ${block.caption ?? block.component_type ?? ""}`.trim()];
+      return [`**Interactive:** ${block.caption ?? block.component_type ?? ""}`.trim()];
     case "table":
       return [text];
   }
@@ -136,25 +136,26 @@ export function diffUnits(before: readonly string[], after: readonly string[]): 
   return result;
 }
 
-/** Hides runs of unchanged paragraphs, keeping `context` paragraphs next to each change. */
-export function collapseUnchanged(units: readonly UnitDiff[], context = 1): CollapsedUnit[] {
-  const keep = units.map((unit, index) =>
-    unit.kind !== "same"
-      ? true
-      : units
-          .slice(Math.max(0, index - context), index + context + 1)
-          .some((near) => near.kind !== "same"),
-  );
-  const result: CollapsedUnit[] = [];
+/** Folds runs of unchanged paragraphs, keeping `context` paragraphs next to each change. */
+export function collapseUnchanged<T extends Readonly<{ kind: string }>>(
+  units: readonly T[],
+  context = 1,
+): (T | SkippedUnits<T>)[] {
+  const result: (T | SkippedUnits<T>)[] = [];
+  let hidden: T[] = [];
   units.forEach((unit, index) => {
-    if (keep[index]) {
-      result.push(unit);
+    const nearChange = units
+      .slice(Math.max(0, index - context), index + context + 1)
+      .some((near) => near.kind !== "same");
+    if (!nearChange) {
+      hidden.push(unit);
       return;
     }
-    const last = result.at(-1);
-    if (last?.kind === "skipped") result[result.length - 1] = { ...last, count: last.count + 1 };
-    else result.push({ kind: "skipped", count: 1 });
+    if (hidden.length) result.push({ kind: "skipped", units: hidden });
+    hidden = [];
+    result.push(unit);
   });
+  if (hidden.length) result.push({ kind: "skipped", units: hidden });
   return result;
 }
 

@@ -64,10 +64,10 @@ describe("sectionUnits", () => {
       "First.",
       "Second.",
       "- one\n- two",
-      "$$x^2$$",
-      "Quiz: Pick one\n- A\n- B",
-      "Checkpoint: Explain it",
-      "Figure: A figure",
+      "$$\nx^2\n$$",
+      "**Quiz:** Pick one\n- A\n- B",
+      "**Checkpoint:** Explain it",
+      "**Figure:** A figure",
     ]);
   });
 });
@@ -124,10 +124,34 @@ describe("collapseUnchanged", () => {
   it("keeps one paragraph of context around changes", () => {
     const units = diffUnits(["a", "b", "c", "d", "e"], ["a", "b", "c", "d", "E"]);
     expect(collapseUnchanged(units)).toEqual([
-      { kind: "skipped", count: 3 },
+      {
+        kind: "skipped",
+        units: [
+          { kind: "same", text: "a" },
+          { kind: "same", text: "b" },
+          { kind: "same", text: "c" },
+        ],
+      },
       { kind: "same", text: "d" },
       { kind: "removed", text: "e" },
       { kind: "added", text: "E" },
     ]);
+  });
+
+  it("folds trailing runs and keeps the hidden paragraphs for expansion", () => {
+    const units = diffUnits(["x", "a", "b", "c"], ["X", "a", "b", "c"]);
+    expect(collapseUnchanged(units).map((unit) => unit.kind)).toEqual([
+      "removed",
+      "added",
+      "same",
+      "skipped",
+    ]);
+    expect(collapseUnchanged(units).at(-1)).toEqual({
+      kind: "skipped",
+      units: [
+        { kind: "same", text: "b" },
+        { kind: "same", text: "c" },
+      ],
+    });
   });
 });

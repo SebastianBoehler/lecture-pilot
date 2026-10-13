@@ -9,6 +9,7 @@ from pathlib import Path
 from lecturepilot.authoring.authoring_job import AuthoringJob, run_authoring_job
 from lecturepilot.authoring.authoring_models import AuthoringMetrics
 from lecturepilot.authoring.authoring_provider import authoring_model
+from lecturepilot.authoring.canvas_change_authoring import CanvasChangeResult, run_change_job
 from lecturepilot.canvas.canvas_models import CanvasDocument
 from lecturepilot.authoring.course_canvas_quality import (
     CanvasQualityReviewer,
@@ -83,3 +84,35 @@ class CourseCanvasAuthor:
         async with authoring_model(settings, self.usage_recorder, scope.authorize) as model:
             result = await run_authoring_job(job, model=model)
         return result.document
+
+    async def change_canvas(
+        self,
+        source_document: CanvasDocument,
+        *,
+        practice_design: PracticeDesign,
+        base: CanvasDocument,
+        instruction: str,
+        section_ids: tuple[str, ...],
+        output_language: str = "en",
+    ) -> CanvasChangeResult:
+        """Regenerate only the sections a professor change request concerns."""
+        scope = _scope.get()
+        if scope is None:
+            raise RuntimeError("Canvas authoring requires an authorized durable job scope.")
+        scope.authorize()
+        settings = self.provider_registry.require_ready([ProviderCapability.CHAT])
+        job = AuthoringJob(
+            root=scope.root,
+            source=filter_source_document_for_planning(source_document),
+            design=practice_design,
+            source_revision=scope.source_revision,
+            settings=settings,
+            reviewer=self.reviewer,
+            output_language=output_language,
+            authorize=scope.authorize,
+            report=scope.report,
+        )
+        async with authoring_model(settings, self.usage_recorder, scope.authorize) as model:
+            return await run_change_job(
+                job, model=model, base=base, instruction=instruction, section_ids=section_ids
+            )

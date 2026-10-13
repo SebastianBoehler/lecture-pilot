@@ -27,6 +27,7 @@ export function CourseLectureRow({
   onConfirmRouting,
   onStartDraft,
   onPreview,
+  onRequestChange,
 }: {
   lecture: LectureState;
   open: boolean;
@@ -37,10 +38,16 @@ export function CourseLectureRow({
   onConfirmRouting: () => void;
   onStartDraft: () => void;
   onPreview?: () => void;
+  onRequestChange?: () => void;
 }) {
   const { locale, t } = useI18n();
   const panelId = `lecture-panel-${lecture.lecture_id}`;
-  const failure = lecture.draft === "failed" ? lecture.draft_error : null;
+  // A later failed attempt keeps a ready draft or the publication; it still says why.
+  const failure = lecture.draft_error
+    ? lecture.draft === "failed"
+      ? t("coursePage.draftFailed", { reason: lecture.draft_error })
+      : t("changeRequest.latestFailed", { reason: lecture.draft_error })
+    : null;
   return (
     <>
       <tr className="course-lecture-row" data-open={open || undefined}>
@@ -50,11 +57,7 @@ export function CourseLectureRow({
           {lecture.sources === "new" && !lecture.published ? (
             <span className="course-lecture-new">{t("coursePage.new")}</span>
           ) : null}
-          {failure ? (
-            <span className="course-lecture-reason">
-              {t("coursePage.draftFailed", { reason: failure })}
-            </span>
-          ) : null}
+          {failure ? <span className="course-lecture-reason">{failure}</span> : null}
           {error ? (
             <span className="course-lecture-reason" role="alert">
               {error}
@@ -76,6 +79,17 @@ export function CourseLectureRow({
               onClick={onPreview}
             >
               {t("coursePage.previewLecture")}
+            </button>
+          ) : null}
+          {onRequestChange && !pending ? (
+            <button
+              className="course-quiet-button"
+              type="button"
+              aria-label={t("changeRequest.actionFor", { lecture: lecture.title })}
+              aria-haspopup="dialog"
+              onClick={onRequestChange}
+            >
+              {t("changeRequest.action")}
             </button>
           ) : null}
           {primaryAction()}

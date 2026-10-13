@@ -172,3 +172,65 @@ generation record per lecture is parsed (`courses/lecture_states.py`).
 review (unless the lecture is published and current), then `wait` (proposing),
 `review_goals` (missing or needs review), `keep_or_regenerate_goals` (stale), then
 by draft: `wait`, `retry_draft`, `review_draft`, `generate_draft` or `none`.
+
+A failed attempt never hides a usable result: when the newest generation failed after the
+current ready draft was written (or after the current publication), `draft` stays `ready`
+(or `published`) and `draft_error` still carries the failure, for example a change request
+that could not be applied. Its `next_action` is unchanged.
+
+## Change requests
+
+```http
+GET  /admin/courses/{course}/lectures/{lecture}/canvas/change-request
+POST /admin/courses/{course}/lectures/{lecture}/canvas/change-request
+```
+
+Course managers (owners) only; CSRF, the client contract, `Idempotency-Key` and
+`Prefer: respond-async` work like `POST .../canvas/draft` (202 while running, the same
+generation job store and `lecture-states` progress). The professor describes what should
+change and may limit it to sections:
+
+```json
+{ "instruction": "Add a worked example on momentum after the update rule.", "section_ids": [] }
+```
+
+`instruction` is trimmed, 1–2000 characters; `section_ids` must be sections of the base
+document (else 422). `GET` returns the base (`draft` or `published`), its sections (`id`,
+`title`) and the latest recorded request.
+
+**Base and preconditions** (`authoring/canvas_change_base.py`, 409 with a readable `detail`):
+the goals are approved for the lecture's current sources; the base is the ready draft bound to
+those goals and sources, else the publication bound to exactly the current approved
+implementation; no generation for the lecture holds its lease. A retry with the same
+`Idempotency-Key` replays the accepted request.
+
+**Workflow** (`authoring/canvas_change_authoring.py`; no tools, no learner data):
+
+1. Without `section_ids`, one structured selection call (`canvas_change_selection.py`) sees only
+   the request and the outline (section ids and titles) and returns at most four ids from an enum
+   with a short reason each.
+2. Each selected section is revised from its current Markdown, its source evidence and only its
+   own approved checkpoint contracts (as in authoring; hidden exit and transfer tasks are never
+   sent). The request is untrusted data and cannot authorize claims beyond the evidence. The
+   ordinary per-section deterministic checks run with their bounded retries.
+3. Regenerated sections are spliced into the base (`canvas_change_splice.py`): every other
+   section is the base's own object, so its stored Markdown stays byte-identical. One prediction
+   card per lecture, colliding block ids renamed, original slides interleaved, then the same
+   lecture-level checks as authoring; a check naming a changed section gets one repair.
+4. One critic call over the changed sections only; one repair per flagged section, never
+   re-reviewed (notes become draft warnings). Checkpoint objections stay warnings: a change
+   request never repairs the teaching implementation.
+5. Approved checkpoints remain backend-inserted. A section that keeps rewriting one fails the
+   request with a `draft_error` that sends the professor to goal review ("Regenerate goals" or
+   goal editing). Other unresolvable defects fail with their readable detail; the base stays.
+
+The result is written as an ordinary draft for the current approved goals and sources (draft
+binding and learning-design review), so the course page shows it as `ready`, the review panel
+diffs it against the publication and Approve & publish works unchanged. Students keep the
+publication until then. The instruction, selected section ids, selection mode and reasons are
+recorded privately in `builder/change-requests/<lecture-id>/<generation-id>.json`; they never
+reach learners or analytics.
+
+Model calls per request: selection (0 or 1) + one per selected section (each with up to three
+deterministic retries) + one critic call (split only above a bounded size) + at most one repair
+per flagged section + at most one repair per section named by a lecture-level check.

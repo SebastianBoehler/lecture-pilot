@@ -72,11 +72,11 @@ describe("Course page draft review", () => {
 
     const changed = (await screen.findByText("Bagging")).closest("article")!;
     expect(within(changed).getByText("Changed section")).toBeInTheDocument();
-    expect(within(changed).getByText("Take the majority.").tagName).toBe("DEL");
-    expect(within(changed).getByText("Average the votes.").tagName).toBe("INS");
+    expect((await within(changed).findByText("Take the majority.")).closest("del")).not.toBeNull();
+    expect((await within(changed).findByText("Average the votes.")).closest("ins")).not.toBeNull();
     expect(screen.getByText("Stacking").closest("article")).toHaveAttribute("data-kind", "added");
     expect(screen.getByText("History").closest("article")).toHaveAttribute("data-kind", "removed");
-    expect(screen.getByText("1 unchanged section")).toBeInTheDocument();
+    expect(screen.getByText("1 unchanged")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open full draft preview" })).toHaveAttribute(
       "href",
       "/professor/courses/machine-learning/lectures/lecture-06/draft",

@@ -64,3 +64,10 @@ export function courseLectureSummary(lectures: readonly LectureState[]) {
     readyToPublish: lectures.filter((lecture) => lecture.next_action === "review_draft").length,
   };
 }
+
+/** A change request starts from a ready draft or the publication of the current goals. */
+export function canRequestChange(lecture: LectureState) {
+  return (
+    lecture.goals === "approved" && (lecture.draft === "ready" || lecture.draft === "published")
+  );
+}

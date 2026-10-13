@@ -16,6 +16,7 @@ from lecturepilot.canvas.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.courses.course_access import require_course_id_access, require_lecture_id_access
 from lecturepilot.authoring.course_canvas_draft_routes import register_course_canvas_draft_routes
 from lecturepilot.authoring.course_canvas_repair_routes import register_course_canvas_repair_routes
+from lecturepilot.authoring.canvas_change_routes import register_canvas_change_routes
 from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.learning_design.course_practice_design_routes import (
     register_course_practice_design_routes,
@@ -70,6 +71,9 @@ def register_course_canvas_routes(
         app,
         course_tenant_id=course_tenant_id,
         source_document=source_document,
+    )
+    register_canvas_change_routes(
+        app, course_tenant_id=course_tenant_id, source_document=source_document
     )
     register_course_learning_design_routes(app, course_tenant_id=course_tenant_id)
 
