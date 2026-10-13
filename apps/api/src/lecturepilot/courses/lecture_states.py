@@ -125,26 +125,45 @@ def _draft_state(
     publication: CanvasPublicationMetadata | None,
 ) -> tuple[str, str | None]:
     """`design` is the practice design only when its goals are approved for current sources."""
-    job = _latest_generation(layout, course_id, lecture_id)
+    job = latest_generation(layout, course_id, lecture_id)
     age = (datetime.now(UTC) - job.updated_at).total_seconds() if job else 0
     if job is not None and job.status == "running" and age <= CANVAS_GENERATION_LEASE_SECONDS:
         return "generating", None
     if design is None:
         return "none", None
-    published = publication is not None and _publication_current(publication, design)
-    draft_digest = _current_draft_digest(layout, course_id, lecture_id, design)
+    published = publication is not None and publication_current(publication, design)
+    failure = _failure(job, design.learning_intent.approval.approved_at)
+    draft_digest = current_draft_digest(layout, course_id, lecture_id, design)
     if draft_digest is not None and (not published or draft_digest != publication.draft_digest):
-        return "ready", None
-    if published:
-        return "published", None
-    approved_at = design.learning_intent.approval.approved_at
-    if job is not None and job.status != "completed" and job.updated_at >= approved_at:
-        if job.status == "running" or job.error_code == "interrupted":
-            return "failed", readable_draft_error(job.error_detail) or _INTERRUPTED
-        return "failed", (
-            readable_draft_error(job.error_detail) or "Draft generation failed. Retry the draft."
+        # A later failed attempt (e.g. a change request) keeps the draft but reports why.
+        drafted_at = _modified_at(
+            layout.course_canvas_draft_dir(course_id, lecture_id) / "index.md"
         )
+        return "ready", failure if failure and job.updated_at > drafted_at else None
+    if published:
+        return (
+            "published",
+            failure if failure and job.updated_at > publication.published_at else None,
+        )
+    if failure:
+        return "failed", failure
     return "none", None
+
+
+def _failure(job: CanvasGenerationJob | None, approved_at: datetime) -> str | None:
+    """The readable detail of the newest generation when it failed after the goal approval."""
+    if job is None or job.status == "completed" or job.updated_at < approved_at:
+        return None
+    if job.status == "running" or job.error_code == "interrupted":
+        return readable_draft_error(job.error_detail) or _INTERRUPTED
+    return readable_draft_error(job.error_detail) or "Draft generation failed. Retry the draft."
+
+
+def _modified_at(path: Path) -> datetime:
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime, UTC)
+    except OSError:
+        return datetime.max.replace(tzinfo=UTC)
 
 
 _INTERNAL_PATH_PREFIX = re.compile(r"^/[\w./-]+\.(?:md|json|yaml):\s*")
@@ -157,7 +176,7 @@ def readable_draft_error(detail: str | None) -> str | None:
     return _INTERNAL_PATH_PREFIX.sub("", detail.strip()) or None
 
 
-def _publication_current(publication: CanvasPublicationMetadata, design: PracticeDesign) -> bool:
+def publication_current(publication: CanvasPublicationMetadata, design: PracticeDesign) -> bool:
     if publication.source_revision != design.source_revision:
         return False
     if publication.learning_intent_revision is not None:
@@ -165,7 +184,7 @@ def _publication_current(publication: CanvasPublicationMetadata, design: Practic
     return publication.practice_design_revision == design.revision
 
 
-def _current_draft_digest(layout, course_id, lecture_id, design) -> str | None:
+def current_draft_digest(layout, course_id, lecture_id, design) -> str | None:
     draft_dir = layout.course_canvas_draft_dir(course_id, lecture_id)
     if not (draft_dir / "index.md").exists():
         return None
@@ -184,7 +203,7 @@ def _current_draft_digest(layout, course_id, lecture_id, design) -> str | None:
     return digest if isinstance(digest, str) else None
 
 
-def _latest_generation(layout, course_id: str, lecture_id: str) -> CanvasGenerationJob | None:
+def latest_generation(layout, course_id: str, lecture_id: str) -> CanvasGenerationJob | None:
     directory = layout.course_root(course_id) / "builder" / "generations" / safe_id(lecture_id)
     if not directory.is_dir():
         return None
