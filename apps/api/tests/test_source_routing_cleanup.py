@@ -137,7 +137,7 @@ def test_cleanup_preserves_transitive_tex_dependencies(tmp_path):
     }
 
 
-def test_storage_only_cleanup_preserves_teaching_revision_but_new_upload_invalidates(tmp_path):
+def test_cleanup_and_unrouted_uploads_preserve_teaching_revision_until_own_file_changes(tmp_path):
     import json
     from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
 
@@ -172,5 +172,15 @@ def test_storage_only_cleanup_preserves_teaching_revision_but_new_upload_invalid
     assert response.status_code == 200, response.text
     assert not (layout.course_uploads_dir(COURSE_ID) / "unused.md").exists()
     assert lecture_source_revision(layout, course_id=COURSE_ID, lecture_id="lecture-03") == before
+    # Revisions are lecture-local: an unrouted upload does not stale this lecture.
     _upload(client, "new.md", b"New source")
+    assert lecture_source_revision(layout, course_id=COURSE_ID, lecture_id="lecture-03") == before
+    from lecturepilot.sources.source_index import refresh_course_source_index
+
+    (layout.course_uploads_dir(COURSE_ID) / "Lecture03.md").write_bytes(b"# Bayes revised")
+    refresh_course_source_index(
+        course_id=COURSE_ID,
+        uploads_dir=layout.course_uploads_dir(COURSE_ID),
+        index_path=layout.course_source_index_path(COURSE_ID),
+    )
     assert lecture_source_revision(layout, course_id=COURSE_ID, lecture_id="lecture-03") != before

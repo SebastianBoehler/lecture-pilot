@@ -118,6 +118,14 @@ class StorageLayout:
             / f"{safe_id(lecture_id)}.json"
         )
 
+    def lecture_source_alias_path(self, course_id: str, lecture_id: str) -> Path:
+        return (
+            self.course_root(course_id)
+            / "builder"
+            / "source-manifests"
+            / f"{safe_id(lecture_id)}.alias.json"
+        )
+
     def course_source_routing_path(self, course_id: str) -> Path:
         return self.course_root(course_id) / "builder" / "source-routing.json"
 
