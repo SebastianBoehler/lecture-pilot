@@ -10,6 +10,7 @@ keep the same inode, size and modification time; any change re-validates.
 from __future__ import annotations
 
 from collections import OrderedDict
+import os
 from collections.abc import Callable
 from pathlib import Path
 from threading import Lock
@@ -50,25 +51,29 @@ class PublishedSnapshotValidity:
 
 def snapshot_signature(published_dir: Path) -> Signature | None:
     """Identity of the published directory and every file snapshot validation reads."""
+    # os.scandir avoids pathlib object overhead; this runs for every lecture on every listing.
     try:
-        directory = published_dir.stat()
+        directory = os.stat(published_dir)
+        entries = [("", directory.st_ino, directory.st_mtime_ns, 0)]
+        sections = None
+        with os.scandir(published_dir) as items:
+            for item in items:
+                if item.name == "sections" and item.is_dir():
+                    sections = item.path
+                elif item.is_file():
+                    stat = item.stat()
+                    entries.append((item.name, stat.st_ino, stat.st_mtime_ns, stat.st_size))
+        if sections is not None:
+            stat = os.stat(sections)
+            entries.append(("sections/", stat.st_ino, stat.st_mtime_ns, 0))
+            with os.scandir(sections) as items:
+                for item in items:
+                    if item.name.endswith(".md") and item.is_file():
+                        stat = item.stat()
+                        name = f"sections/{item.name}"
+                        entries.append((name, stat.st_ino, stat.st_mtime_ns, stat.st_size))
     except FileNotFoundError:
         return None
-    entries = [("", directory.st_ino, directory.st_mtime_ns, 0)]
-    sections = published_dir / "sections"
-    candidates = [*published_dir.iterdir(), *(sections.glob("*.md") if sections.is_dir() else ())]
-    if sections.is_dir():
-        stat = sections.stat()
-        entries.append(("sections/", stat.st_ino, stat.st_mtime_ns, 0))
-    for path in candidates:
-        if not path.is_file():
-            continue
-        try:
-            stat = path.stat()
-        except FileNotFoundError:
-            return None
-        name = path.relative_to(published_dir).as_posix()
-        entries.append((name, stat.st_ino, stat.st_mtime_ns, stat.st_size))
     return tuple(sorted(entries))
 
 
