@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from fastapi.concurrency import run_in_threadpool
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 
@@ -23,13 +25,23 @@ from lecturepilot.courses.course_update_models import (
     CourseUpdateCreated,
     CourseUpdateUploadResult,
 )
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.learning_design.learning_goal_proposal_jobs import (
+    mark_goal_proposals_running,
+    start_goal_proposals,
+)
 from lecturepilot.core.secure_upload import promote_course_upload, stage_course_upload
 from lecturepilot.identity.tenancy import TenantContext
 from lecturepilot.core.workspace import WorkspacePolicyError
 from lecturepilot.core.workspace_fs import WorkspaceFSError
 
 
-def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> None:
+def register_course_update_routes(
+    app: FastAPI,
+    *,
+    course_tenant_id: str,
+    source_document: Callable[[str, str], CanvasDocument],
+) -> None:
     @app.post(
         "/admin/courses/{course_id}/updates",
         response_model=CourseUpdateCreated,
@@ -115,7 +127,7 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
         "/admin/courses/{course_id}/updates/{update_id}/apply",
         response_model=CourseUpdateApplyResult,
     )
-    def apply_update(
+    async def apply_update(
         course_id: str,
         update_id: str,
         payload: CourseUpdateApplyInput,
@@ -123,27 +135,42 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
         context: TenantContext = Depends(request_context),
     ) -> CourseUpdateApplyResult:
         _require_manager(request, context, course_id, course_tenant_id)
-        try:
-            result = apply_course_update(
-                app.state.canvas_workspace.layout, course_id, update_id, payload
+        layout = app.state.canvas_workspace.layout
+
+        def apply() -> CourseUpdateApplyResult:  # Course lock and file writes block.
+            try:
+                result = apply_course_update(layout, course_id, update_id, payload)
+            except CourseUpdateRecoveryError as exc:
+                raise HTTPException(status_code=500, detail=str(exc)) from exc
+            except CourseUpdateError as exc:
+                raise _http_error(exc) from exc
+            except WorkspaceFSError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            record_audit_event(
+                app.state.database,
+                context,
+                event_type="course.material_update_applied",
+                target_type="course",
+                target_id=course_id,
+                details={
+                    "applied_files": result.applied_files,
+                    "affected_lectures": len(result.affected_lecture_ids),
+                },
             )
-        except CourseUpdateRecoveryError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        except CourseUpdateError as exc:
-            raise _http_error(exc) from exc
-        except WorkspaceFSError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        record_audit_event(
-            app.state.database,
-            context,
-            event_type="course.material_update_applied",
-            target_type="course",
-            target_id=course_id,
-            details={
-                "applied_files": result.applied_files,
-                "affected_lectures": len(result.affected_lecture_ids),
-            },
-        )
+            if result.routing == "confirmed" and result.new_lecture_ids:
+                mark_goal_proposals_running(layout, course_id, result.new_lecture_ids)
+            return result
+
+        result = await run_in_threadpool(apply)
+        if result.routing == "confirmed" and result.new_lecture_ids:
+            # Proposals parse sources and call models: they run after the response.
+            start_goal_proposals(
+                app,
+                course_id=course_id,
+                lecture_ids=result.new_lecture_ids,
+                actor_user_id=context.user_id,
+                source_document=source_document,
+            )
         return result
 
     @app.delete(

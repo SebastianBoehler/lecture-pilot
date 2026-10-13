@@ -84,4 +84,7 @@ class CourseUpdateApplyResult(BaseModel):
     update_id: str
     applied_files: int = Field(ge=1)
     affected_lecture_ids: list[str] = Field(min_length=1, max_length=80)
+    # New lectures whose goals are proposed in the background (when routing is confirmed).
+    new_lecture_ids: list[str] = Field(default_factory=list, max_length=80)
+    routing: Literal["confirmed", "needs_review"] = "needs_review"
     workspace: CourseWorkspaceResult

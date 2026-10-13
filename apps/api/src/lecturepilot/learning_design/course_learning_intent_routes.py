@@ -5,23 +5,17 @@ from lecturepilot.learning_design.teaching_implementation_change_routes import (
 )
 
 from fastapi import Depends, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, BeforeValidator, Field
 
 from lecturepilot.identity.api_auth import request_context
-from lecturepilot.learning_design.course_learning_intent import has_approved_intent
 from lecturepilot.learning_design.course_learning_intent_store import LearningIntentStore
 from lecturepilot.learning_design.learning_goal_support import (
     goal_findings_path,
     goal_set_objective,
     read_goal_findings,
-    save_goal_findings,
 )
-from lecturepilot.learning_design.course_learning_intent_proposal import (
-    LearningIntentProposal,
-    propose_learning_intent,
-)
-from lecturepilot.llm.model_usage import model_usage_scope
+from lecturepilot.learning_design.course_learning_intent_proposal import LearningIntentProposal
+from lecturepilot.learning_design.learning_goal_proposal_run import propose_lecture_goals
 from lecturepilot.llm.model_client import ModelExecutionError
 from lecturepilot.llm.providers import ProviderConfigurationError
 from lecturepilot.learning_design.course_practice_design_contract import (
@@ -120,66 +114,17 @@ def register_learning_intent_routes(
     ):
         """Propose goals once per source revision; `refresh` replaces unapproved goals."""
         require_manager(context, request, course_id, course_tenant_id)
-        layout = app.state.canvas_workspace.layout
-        store = LearningIntentStore(layout)
-
-        def current_sources():
-            with locked_course_state(layout.course_root(course_id)):
-                revision = source_revision(app, course_id, lecture_id)
-                snapshot = store.snapshot(course_id=course_id, lecture_id=lecture_id)
-            existing = snapshot.design
-            current = existing is not None and existing.source_revision == revision
-            if current and refresh and has_approved_intent(existing):
-                raise PracticeDesignStale(
-                    "These learning goals are approved. Edit them to propose new goals."
-                )
-            if current and not refresh:
-                return snapshot, None
-            # Parsing (conversion, LaTeX, OCR) never holds the course lock.
-            return snapshot, source_context(app, source_document, course_id, lecture_id)
-
         try:
-            snapshot, loaded = await run_in_threadpool(current_sources)
-        except PracticeDesignStale as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        existing = snapshot.design
-        if loaded is None:
-            return existing
-        source, revision, paths = loaded
-
-        def save(proposal):
-            with locked_course_state(layout.course_root(course_id)):
-                # Same revision means the same confirmed files, so the parsed source still holds.
-                if source_revision(app, course_id, lecture_id) != revision:
-                    raise PracticeDesignStale("Course sources changed while goals were proposed.")
-                return store.save_goals(
-                    expected=existing,
-                    expected_invalid_digest=snapshot.invalid_digest,
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    source_revision=revision,
-                    proposal=proposal,
-                    source=source,
-                    allowed_source_paths=paths,
-                )
-
-        try:
-            with model_usage_scope(
-                actor_user_id=context.user_id,
+            return await propose_lecture_goals(
+                app,
                 course_id=course_id,
-                workload="course_learning_intent",
-            ):
-                proposal, findings = await propose_learning_intent(
-                    app.state.practice_design_planner,
-                    source=source,
-                    source_revision=revision,
-                    allowed_source_paths=paths,
-                )
-            saved = await run_in_threadpool(save, proposal)
-            save_goal_findings(
-                goal_findings_path(layout, course_id, lecture_id), proposal.goals, findings
+                lecture_id=lecture_id,
+                actor_user_id=context.user_id,
+                refresh=refresh,
+                source_document=source_document,
+                source_context=source_context,
+                source_revision=source_revision,
             )
-            return saved
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
