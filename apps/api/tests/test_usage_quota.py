@@ -3,17 +3,13 @@ from __future__ import annotations
 import pytest
 
 from lecturepilot.database import Database
-from lecturepilot.identity.identity_repository import IdentityRepository
-from lecturepilot.courses.university_models import UniversityLoginResult
 from lecturepilot.llm.usage_quota import UsageLimits, UsageQuota, UsageQuotaExceeded
+from security_db_helpers import seed_account
 
 
 def test_durable_agent_and_image_quotas_survive_service_instances() -> None:
     database = Database()
-    account = IdentityRepository(database).record_login(
-        UniversityLoginResult(username="quota-user", term="Sommer 2026"),
-        tenant_id="tenant-tuebingen",
-    )
+    account = seed_account(database, "quota-user")
     limits = UsageLimits(
         turns_per_day=2,
         reserved_tokens_per_day=20,
@@ -44,10 +40,7 @@ def test_durable_agent_and_image_quotas_survive_service_instances() -> None:
 
 def test_actual_usage_refunds_tokens_and_failed_image_can_be_retried() -> None:
     database = Database()
-    account = IdentityRepository(database).record_login(
-        UniversityLoginResult(username="quota-reconciliation", term="Sommer 2026"),
-        tenant_id="tenant-tuebingen",
-    )
+    account = seed_account(database, "quota-reconciliation")
     limits = UsageLimits(
         turns_per_day=5,
         reserved_tokens_per_day=100,
@@ -74,10 +67,7 @@ def test_actual_usage_refunds_tokens_and_failed_image_can_be_retried() -> None:
 
 def test_background_exam_reservation_does_not_occupy_or_release_the_tutor_slot():
     database = Database()
-    account = IdentityRepository(database).record_login(
-        UniversityLoginResult(username="background-quota", term="Sommer 2026"),
-        tenant_id="tenant-tuebingen",
-    )
+    account = seed_account(database, "background-quota")
     quota = UsageQuota(database, UsageLimits(5, 1000, 1, 1, 10), enabled=True)
     scope = dict(tenant_id="tenant-tuebingen", user_id=str(account.user_id), course_id="course-3")
     assert quota.reserve_turn(**scope, concurrent=False)

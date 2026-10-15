@@ -4,7 +4,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from lecturepilot.learning_design.course_learning_intent import goal_for
 from practice_design_test_helpers import proposal
-from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
+from security_db_helpers import LegacyUniversityAccounts, login, mutation_headers
 
 
 def test_practice_design_routes_are_private_to_the_owner_professor(tmp_path) -> None:
@@ -12,9 +12,9 @@ def test_practice_design_routes_are_private_to_the_owner_professor(tmp_path) -> 
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
     )
-    app.state.tuebingen_adapter = FakeUniversityAdapter({"owner": [], "other": []})
+    app.state.legacy_accounts = LegacyUniversityAccounts({"owner": [], "other": []})
     owner_client = TestClient(app, base_url="http://localhost:8000")
-    app.state.tuebingen_adapter.roles_by_user["owner"] = "lecturer"
+    app.state.legacy_accounts.roles_by_user["owner"] = "lecturer"
     owner = login(owner_client, "owner")
     created = owner_client.post(
         "/admin/course-workspaces",
@@ -29,7 +29,7 @@ def test_practice_design_routes_are_private_to_the_owner_professor(tmp_path) -> 
     assert created.status_code == 200
     course_id = created.json()["course"]["id"]
     other_client = TestClient(app, base_url="http://localhost:8000")
-    app.state.tuebingen_adapter.roles_by_user["other"] = "lecturer"
+    app.state.legacy_accounts.roles_by_user["other"] = "lecturer"
     other = login(other_client, "other")
     path = f"/admin/courses/{course_id}/lectures/lecture-01/practice-design"
     revisions = {"source_revision": "a" * 64, "practice_design_revision": "b" * 64}

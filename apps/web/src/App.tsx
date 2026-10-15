@@ -23,7 +23,6 @@ import { usePublicMetadata } from "./info/usePublicMetadata";
 import { useAppRoute } from "./shell/useAppRoute";
 import { useCourseWorkspace } from "./dashboard/useCourseWorkspace";
 import { useLessonSession } from "./lesson/useLessonSession";
-import { useUniversityCourseSync } from "./professor/useUniversityCourseSync";
 import { useFeedbackPrompt } from "./shell/useFeedbackPrompt";
 import { useViewTransitionReset } from "./shell/useViewTransitionReset";
 import { useVersionUpdateActivity } from "./shell/VersionUpdateBoundary";
@@ -62,7 +61,6 @@ function App() {
   });
   const { setPanelMode } = lesson;
   useVersionUpdateActivity(lesson.messages.some((message) => Boolean(message.isPending)));
-  useUniversityCourseSync(session, setSession);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -115,12 +113,7 @@ function App() {
   const shouldLoadWorkspaceFromSession = route.view !== "lesson";
 
   useEffect(() => {
-    if (
-      !session ||
-      session.university_course_sync_status === "loading" ||
-      !shouldLoadWorkspaceFromSession
-    )
-      return;
+    if (!session || !shouldLoadWorkspaceFromSession) return;
     void loadWorkspaceCourseFromSession(session);
   }, [session, shouldLoadWorkspaceFromSession]);
 

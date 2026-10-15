@@ -5,7 +5,7 @@ from sqlalchemy import and_, desc, distinct, exists, func, select, tuple_
 from lecturepilot.core.db_models import CourseExternalRefRecord
 from lecturepilot.courses.course_support_models import CourseSupportDemandRow, CourseSupportMatch
 from lecturepilot.courses.course_support_requests import Observation, Request, tenant_member_ids
-from lecturepilot.courses.external_course_sync import course_title_key
+from lecturepilot.courses.course_title_key import course_title_key
 from lecturepilot.database import Database
 
 # Any professor can query any title, so smaller request counts could point at individuals.

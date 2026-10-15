@@ -12,7 +12,6 @@ it("keeps password-reset links usable for an already signed-in professor", async
     term: "",
     courses: [],
     university_courses: [],
-    university_course_sync_status: "ready",
     csrf_token: "a".repeat(32),
   };
   window.localStorage.setItem("lecturepilot.loginSession", JSON.stringify(professor));

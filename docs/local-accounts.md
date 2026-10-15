@@ -42,6 +42,8 @@ challenge requests. Password hashing has two bounded worker slots.
 
 Run `alembic -c apps/api/alembic.ini upgrade head` with the intended database.
 Migration `20261015_0012` creates account tables and revokes all old sessions.
+Migration `20261015_0013` drops the retired Alma/ILIAS course-sync state; stored
+observed courses, enrollments and roles stay untouched.
 Back up the database before deployment.
 
 Existing users register with their existing university email. After verification,

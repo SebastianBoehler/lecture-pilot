@@ -8,7 +8,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from lecturepilot.courses.course_schedule_store import write_course_workspace
 from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
-from security_db_helpers import FakeUniversityAdapter, candidate, login
+from security_db_helpers import LegacyUniversityAccounts, candidate, login
 
 
 def test_local_enrolled_session_can_open_matching_created_workspace(
@@ -22,7 +22,7 @@ def test_local_enrolled_session_can_open_matching_created_workspace(
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
-    app.state.tuebingen_adapter = FakeUniversityAdapter(
+    app.state.legacy_accounts = LegacyUniversityAccounts(
         courses_by_user={
             "student01": [
                 candidate(

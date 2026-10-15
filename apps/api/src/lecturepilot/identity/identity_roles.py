@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from lecturepilot.courses.university_models import UniversityLoginResult
-
 
 ALMA_CURRENT_ROLE_CLAIM = "alma_current_role"
 ALMA_AVAILABLE_ROLES_CLAIM = "alma_available_roles"
@@ -45,15 +43,6 @@ def alma_available_roles(provider_claims: Mapping[str, Any] | None) -> list[str]
     if not isinstance(value, list):
         return []
     return [role for role in value if isinstance(role, str) and role.strip()]
-
-
-def university_provider_claims(identity: UniversityLoginResult) -> dict[str, object]:
-    if identity.alma_current_role is None:
-        return {}
-    return {
-        ALMA_CURRENT_ROLE_CLAIM: identity.alma_current_role,
-        ALMA_AVAILABLE_ROLES_CLAIM: identity.alma_available_roles,
-    }
 
 
 def _normalize(value: str) -> str:

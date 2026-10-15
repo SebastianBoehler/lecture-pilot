@@ -22,8 +22,6 @@ def login_result(
         csrf_token=csrf_token,
         courses=list(account.courses),
         university_courses=list(account.university_courses),
-        university_course_sync_status=account.university_course_sync_status,
-        university_course_source_statuses=account.university_course_source_statuses,
     )
 
 
@@ -39,6 +37,4 @@ def account_response(account: AccountView) -> AccountResponse:
         roles=sorted(account.roles, key=lambda role: role.value),
         courses=list(account.courses),
         university_courses=list(account.university_courses),
-        university_course_sync_status=account.university_course_sync_status,
-        university_course_source_statuses=account.university_course_source_statuses,
     )

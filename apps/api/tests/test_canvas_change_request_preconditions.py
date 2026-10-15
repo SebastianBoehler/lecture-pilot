@@ -15,7 +15,7 @@ from canvas_change_test_helpers import (
 from authoring_test_helpers import install_author
 from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
-from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
+from security_db_helpers import LegacyUniversityAccounts, login, mutation_headers
 from test_course_canvas_targeted_repair import _course_client
 
 BODY = {"instruction": "Add a worked example."}
@@ -102,7 +102,7 @@ def test_change_requests_require_course_ownership_and_csrf(tmp_path) -> None:
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
     )
-    app.state.tuebingen_adapter = FakeUniversityAdapter(
+    app.state.legacy_accounts = LegacyUniversityAccounts(
         {"owner": [], "other": []}, roles_by_user={"owner": "lecturer", "other": "lecturer"}
     )
     owner_client = TestClient(app, base_url="http://localhost:8000")

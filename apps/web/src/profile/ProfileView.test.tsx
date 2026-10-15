@@ -79,23 +79,4 @@ describe("ProfileView", () => {
       screen.queryByRole("button", { name: /request professor approval/i }),
     ).not.toBeInTheDocument();
   });
-
-  it("distinguishes pending university data from joined LecturePilot workspaces", () => {
-    const session: LoginSession = {
-      username: "student01",
-      term: "Sommer 2026",
-      account_type: "student",
-      roles: ["student"],
-      courses: [],
-      university_course_sync_status: "loading",
-    };
-
-    renderWithI18n(<ProfileView onLogout={() => undefined} session={session} />);
-
-    expect(
-      within(screen.getByRole("region", { name: "Account" })).getByText("Workspaces"),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
-    expect(screen.getByText("Your workspaces are loading.")).toBeInTheDocument();
-  });
 });

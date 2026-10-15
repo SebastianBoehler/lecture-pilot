@@ -10,7 +10,6 @@ import type { Attendance, Lecture, LoginSession, UniversityCourse } from "../sha
 import { LearnerOnboarding } from "./LearnerOnboarding";
 import { NextUpCard } from "./NextUpCard";
 import type { GateReviewOpening, GateReviewQueueItem } from "./reviewQueueTypes";
-import { CourseSyncEmpty, CourseSyncSkeleton } from "../professor/CourseSyncState";
 import type { LearnerProfileState } from "../profile/useLearnerProfile";
 import { useReviewQueue } from "./useReviewQueue";
 import { useDashboardWorkspaces } from "./useDashboardWorkspaces";
@@ -43,7 +42,6 @@ export function Dashboard({
 }) {
   const { t } = useI18n();
   const studentName = session?.display_name?.trim();
-  const syncStatus = session?.university_course_sync_status ?? "ready";
   const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
   const additional = useDashboardWorkspaces(session, workspaceCourse.id);
   const courseGroups = buildCourseGroups(
@@ -57,12 +55,10 @@ export function Dashboard({
     },
     additional.workspaces,
   );
-  const visibleCourseGroups = syncStatus === "loading" ? [] : courseGroups;
-  const singleCourse = visibleCourseGroups.filter((group) => group.tutorAvailable).length === 1;
+  const singleCourse = courseGroups.filter((group) => group.tutorAvailable).length === 1;
   const activeGroup =
-    visibleCourseGroups.find(
-      (group) => group.tutorAvailable && group.course.id === selectedCourseId,
-    ) ?? visibleCourseGroups.find((group) => group.tutorAvailable);
+    courseGroups.find((group) => group.tutorAvailable && group.course.id === selectedCourseId) ??
+    courseGroups.find((group) => group.tutorAvailable);
   const activeCourse = activeGroup?.course ?? workspaceCourse;
   const workspaceLectures = activeGroup
     ? availableCourseLectures(activeGroup.courseLectures)
@@ -133,13 +129,12 @@ export function Dashboard({
           </div>
         </div>
         <div className="course-workspace-list">
-          {syncStatus === "loading" ? <CourseSyncSkeleton /> : null}
-          {syncStatus !== "loading" && courseGroups.length === 0 ? (
-            <CourseSyncEmpty failed={syncStatus === "error"} />
+          {courseGroups.length === 0 ? (
+            <p className="workspace-empty">{t("dashboard.noCourses")}</p>
           ) : null}
-          {visibleCourseGroups.length ? (
+          {courseGroups.length ? (
             <DashboardCourseWorkspaces
-              courseGroups={visibleCourseGroups}
+              courseGroups={courseGroups}
               newLectureIds={visit.newLectureIds}
               profileCourses={learnerProfileState?.profile?.courses}
               selectedCourseId={activeCourse.id}

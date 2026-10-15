@@ -156,56 +156,6 @@ describe("LecturePilot app shell", () => {
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
   });
 
-  it("opens the app before course synchronization and refreshes the profile in place", async () => {
-    const user = userEvent.setup();
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.endsWith("/auth/login")) {
-        return Promise.resolve(
-          jsonResponse({
-            username: "student01",
-            display_name: null,
-            email: null,
-            term: "Sommer 2026",
-            tenant_id: "tenant-tuebingen",
-            account_type: "student",
-            roles: ["student"],
-            csrf_token: "csrf-token-with-at-least-thirty-two-characters",
-            courses: [],
-            university_courses: [],
-            university_course_sync_status: "loading",
-          }),
-        );
-      }
-      if (url.endsWith("/me")) {
-        return Promise.resolve(
-          jsonResponse({
-            username: "student01",
-            display_name: "Student Example",
-            email: "student01@uni-tuebingen.de",
-            tenant_id: "tenant-tuebingen",
-            account_type: "student",
-            roles: ["student"],
-            courses: [],
-            university_courses: [],
-            university_course_sync_status: "ready",
-          }),
-        );
-      }
-      return Promise.resolve(jsonResponse([]));
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
-
-    await logIn(user);
-
-    expect(await screen.findByRole("status")).toHaveTextContent(/loading your university courses/i);
-    expect(
-      await screen.findByRole("heading", { name: /welcome, student example/i }),
-    ).toBeInTheDocument();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/me"))).toBe(true);
-  });
-
   it("lands a non-student Alma account in the professor workspace", async () => {
     const user = userEvent.setup();
     const professorAccount = {
@@ -217,6 +167,20 @@ describe("LecturePilot app shell", () => {
       university_role: "dozent",
       roles: ["professor"],
       courses: [],
+      university_courses: [
+        {
+          source: "ilias",
+          external_course_id: "crs:1234",
+          term: "Sommer 2026",
+          title: "Advanced Systems",
+        },
+        {
+          source: "alma",
+          external_course_id: "title:other-course",
+          term: "Sommer 2026",
+          title: "Other Alma Course",
+        },
+      ],
     };
     // The lazily loaded first-visit tour would otherwise take focus from the course field.
     window.localStorage.setItem(walkthroughStorageKey(professorAccount.username), "seen");
@@ -229,37 +193,13 @@ describe("LecturePilot app shell", () => {
               {
                 ...professorAccount,
                 csrf_token: "csrf-token-with-at-least-thirty-two-characters",
-                university_courses: [],
-                university_course_sync_status: "loading",
               },
               200,
             ),
           );
         }
         if (String(input).endsWith("/me")) {
-          return Promise.resolve(
-            jsonResponse(
-              {
-                ...professorAccount,
-                university_courses: [
-                  {
-                    source: "ilias",
-                    external_course_id: "crs:1234",
-                    term: "Sommer 2026",
-                    title: "Advanced Systems",
-                  },
-                  {
-                    source: "alma",
-                    external_course_id: "title:other-course",
-                    term: "Sommer 2026",
-                    title: "Other Alma Course",
-                  },
-                ],
-                university_course_sync_status: "ready",
-              },
-              200,
-            ),
-          );
+          return Promise.resolve(jsonResponse(professorAccount, 200));
         }
         return Promise.resolve(jsonResponse([]));
       }),

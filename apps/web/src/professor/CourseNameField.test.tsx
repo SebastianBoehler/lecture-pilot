@@ -6,7 +6,7 @@ import { CourseNameField } from "./CourseNameField";
 import { I18nProvider } from "../i18n/i18n";
 
 describe("course name field", () => {
-  it("preserves suggestion provenance and shows only source errors", async () => {
+  it("preserves suggestion provenance and shows catalogue errors", async () => {
     const user = userEvent.setup();
     render(
       <I18nProvider locale="en" setLocale={() => undefined}>
@@ -18,7 +18,6 @@ describe("course name field", () => {
               sources: ["ilias_membership", "alma_catalog"],
             },
           ]}
-          sourceStatuses={{ alma: "loading", ilias: "ready" }}
           value="Reli"
           onChange={() => undefined}
         />
@@ -33,8 +32,6 @@ describe("course name field", () => {
     expect(screen.getByRole("option", { name: /Reliable Systems/ })).toHaveTextContent(
       "Alma catalogue",
     );
-    expect(screen.queryByText("Alma timetable: loading")).not.toBeInTheDocument();
-    expect(screen.queryByText("ILIAS memberships: available")).not.toBeInTheDocument();
     expect(screen.getByText("Alma catalogue: unavailable")).toBeInTheDocument();
   });
 });

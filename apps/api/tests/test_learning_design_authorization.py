@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
-from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
+from security_db_helpers import LegacyUniversityAccounts, login, mutation_headers
 from canvas_workspace_fixtures import write_canvas_draft
 
 from test_learning_design_review_routes import _document, _update_payload
@@ -17,9 +17,9 @@ def test_learning_design_review_is_private_to_the_owner_professor(tmp_path: Path
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
-    app.state.tuebingen_adapter = FakeUniversityAdapter({"owner": [], "other": []})
+    app.state.legacy_accounts = LegacyUniversityAccounts({"owner": [], "other": []})
     owner_client = TestClient(app, base_url="http://localhost:8000")
-    app.state.tuebingen_adapter.roles_by_user["owner"] = "lecturer"
+    app.state.legacy_accounts.roles_by_user["owner"] = "lecturer"
     owner = login(owner_client, "owner")
     created = owner_client.post(
         "/admin/course-workspaces",
@@ -43,7 +43,7 @@ def test_learning_design_review_is_private_to_the_owner_professor(tmp_path: Path
     assert owner_review.status_code == 200
 
     other_client = TestClient(app, base_url="http://localhost:8000")
-    app.state.tuebingen_adapter.roles_by_user["other"] = "lecturer"
+    app.state.legacy_accounts.roles_by_user["other"] = "lecturer"
     other = login(other_client, "other")
     path = f"/admin/courses/{course_id}/lectures/lecture-01/canvas/learning-design"
     denied_get = other_client.get(path)

@@ -85,7 +85,6 @@ def _session_client(
                 provider="tuebingen",
                 subject="student01",
                 provider_claims={},
-                course_sync_status="ready",
             )
         )
         session.add(TenantMembershipRecord(user_id=user_id, tenant_id="tenant-tuebingen"))

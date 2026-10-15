@@ -8,14 +8,13 @@ from fastapi.testclient import TestClient
 import pytest
 
 from auth_helpers import professor_headers, student_headers
+from security_db_helpers import seed_account
 from lecturepilot.app import create_app
 from lecturepilot.courses.course_repository import CourseRepository
 from lecturepilot.database import Database
-from lecturepilot.identity.identity_repository import IdentityRepository
 from lecturepilot.llm.model_usage import ModelUsageRecorder, model_usage_scope
 from lecturepilot.core.models import CourseWorkspaceSetupInput
 from lecturepilot.llm.professor_usage import ProfessorUsageRepository
-from lecturepilot.courses.university_models import UniversityLoginResult
 from lecturepilot.llm.usage_models import ProfessorUsageSummary, UsageLimitSummary, UsageTotals
 from lecturepilot.llm.usage_quota import UsageQuota
 
@@ -37,9 +36,8 @@ def test_usage_route_is_professor_only() -> None:
 @pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="PostgreSQL test database is required")
 def test_professor_usage_contains_only_owned_course_activity() -> None:
     database = Database()
-    identities = IdentityRepository(database)
-    owner = identities.record_login(_professor("usage-owner"), tenant_id="tenant-tuebingen")
-    other = identities.record_login(_professor("usage-other"), tenant_id="tenant-tuebingen")
+    owner = seed_account(database, "usage-owner", role="lecturer")
+    other = seed_account(database, "usage-other", role="lecturer")
     courses = CourseRepository(database)
     owned = courses.create(
         user_id=owner.user_id,
@@ -72,15 +70,6 @@ def test_professor_usage_contains_only_owned_course_activity() -> None:
     assert summary.totals.tutor_turns == 1
     assert summary.totals.images == 1
     assert [course.course_title for course in summary.courses] == ["Owned Course"]
-
-
-def _professor(username: str) -> UniversityLoginResult:
-    return UniversityLoginResult(
-        username=username,
-        term="Sommer 2026",
-        alma_current_role="lecturer",
-        alma_available_roles=["lecturer"],
-    )
 
 
 def _record(

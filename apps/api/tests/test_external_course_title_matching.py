@@ -1,4 +1,4 @@
-from lecturepilot.courses.external_course_sync import course_title_key
+from lecturepilot.courses.course_title_key import course_title_key
 
 
 def test_title_key_ignores_leading_alma_module_code() -> None:

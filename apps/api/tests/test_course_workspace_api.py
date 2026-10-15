@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from auth_helpers import (
     approve_and_publish,
     confirm_source_routing,
-    pending_university_login,
     professor_headers,
     student_headers,
 )
@@ -18,8 +17,9 @@ from lecturepilot.sources.course_builder_source import course_builder_source_doc
 from lecturepilot.core.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.core.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.core.models import LectureScheduleItem, LectureScheduleProposal
-from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.courses.university_models import ExternalCourseCandidate
 from api_test_client import workspace_client as _client
+from security_db_helpers import LegacyUniversityAccounts
 
 
 def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
@@ -134,7 +134,19 @@ def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> N
 def test_live_login_does_not_grant_courses_from_demo_flag(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", raising=False)
     client = _client(tmp_path)
-    client.app.state.tuebingen_adapter = _FakeLoginAdapter()
+    client.app.state.legacy_accounts = LegacyUniversityAccounts(
+        {
+            "student01": [
+                ExternalCourseCandidate(
+                    source="alma",
+                    external_course_id="unit:4193",
+                    title="INFO4193 Natural Language Processing",
+                    organization="Fachbereich Informatik",
+                    term="Sommer 2026",
+                )
+            ]
+        }
+    )
     _create_workspace(client, "Grundlagen des Maschinellen Lernens", "01", "Introduction")
 
     from security_db_helpers import login
@@ -142,7 +154,6 @@ def test_live_login_does_not_grant_courses_from_demo_flag(tmp_path: Path, monkey
     assert _course_titles(login(client, "student01")) == []
 
     monkeypatch.setenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", "true")
-    from security_db_helpers import login
 
     assert _course_titles(login(client, "student01")) == []
 
@@ -564,27 +575,6 @@ class _FakeLectureSchedulePlanner:
                     material_path="uploads/Lecture02-eng.tex",
                 ),
             ],
-        )
-
-
-class _FakeLoginAdapter:
-    def authenticate(self, *, username: str, password: str, term: str):
-        return pending_university_login(
-            UniversityLoginResult(
-                username=username,
-                email=f"{username}@uni-tuebingen.de",
-                term=term,
-                courses=[
-                    ExternalCourseCandidate(
-                        source="alma",
-                        external_course_id="unit:4193",
-                        title="INFO4193 Natural Language Processing",
-                        organization="Fachbereich Informatik",
-                        term=term,
-                    )
-                ],
-                sources_checked={"alma"},
-            )
         )
 
 

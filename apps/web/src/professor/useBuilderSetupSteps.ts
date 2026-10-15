@@ -67,7 +67,6 @@ export function useBuilderSetupSteps(deps: {
   const defineStep = {
     courseSearchFailed,
     courseSuggestions,
-    courseSourceStatuses: session.university_course_source_statuses,
     courseReady: deps.courseReady,
     isCreating: pendingAction === "create",
     isReady: isCourseSetupReady(setup),

@@ -2,21 +2,16 @@ import { useId, useMemo, useState } from "react";
 
 import { useI18n } from "../i18n/i18n";
 import type { CourseSuggestionSource, CourseTitleSuggestion } from "./professorCourseSuggestions";
-import type { LoginSession } from "../shared/types";
-
-type SourceStatuses = NonNullable<LoginSession["university_course_source_statuses"]>;
 
 export function CourseNameField({
   courseSearchFailed,
   courseSuggestions,
   onChange,
-  sourceStatuses,
   value,
 }: {
   courseSearchFailed: boolean;
   courseSuggestions: CourseTitleSuggestion[];
   onChange: (value: string) => void;
-  sourceStatuses?: SourceStatuses;
   value: string;
 }) {
   const { locale, t } = useI18n();
@@ -105,16 +100,6 @@ export function CourseNameField({
         </ul>
       ) : null}
       <span className="course-source-statuses" aria-live="polite">
-        {sourceStatuses?.alma === "error" ? (
-          <small>
-            {copy.alma}: {copy.unavailable}
-          </small>
-        ) : null}
-        {sourceStatuses?.ilias === "error" ? (
-          <small>
-            {copy.ilias}: {copy.unavailable}
-          </small>
-        ) : null}
         {courseSearchFailed ? (
           <small>
             {copy.catalog}: {copy.unavailable}
@@ -140,15 +125,11 @@ function sourceCopy(locale: "de" | "en") {
         };
   return locale === "de"
     ? {
-        alma: "ALMA Stundenplan",
-        ilias: "ILIAS Mitgliedschaften",
         catalog: "ALMA Katalog",
         source,
         unavailable: "nicht verfügbar",
       }
     : {
-        alma: "Alma timetable",
-        ilias: "ILIAS memberships",
         catalog: "Alma catalogue",
         source,
         unavailable: "unavailable",

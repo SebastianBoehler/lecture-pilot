@@ -6,11 +6,10 @@ from sqlalchemy import text
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
-from lecturepilot.identity.identity_repository import IdentityRepository
-from lecturepilot.courses.university_models import UniversityLoginResult
 from lecturepilot.llm.providers import DEFAULT_MODEL
 from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME, SessionAuthError
 from auth_helpers import student_headers
+from security_db_helpers import seed_account
 from canvas_workspace_fixtures import (
     configure_canvas_workspace,
     publish_course_canvas,
@@ -229,15 +228,7 @@ def _session_client(monkeypatch, tmp_path) -> tuple[TestClient, str, str]:
                 "tenant_memberships, external_identities, users CASCADE"
             )
         )
-    account = IdentityRepository(app.state.database).record_login(
-        UniversityLoginResult(
-            username="student01",
-            term="Sommer 2026",
-            courses=[],
-            sources_checked=set(),
-        ),
-        tenant_id="tenant-tuebingen",
-    )
+    account = seed_account(app.state.database, "student01")
     issued = app.state.session_store.create(account, ttl_minutes=60)
     return (
         TestClient(app, base_url="https://lecturepilot.test"),

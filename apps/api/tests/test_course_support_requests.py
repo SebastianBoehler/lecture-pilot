@@ -15,7 +15,7 @@ from lecturepilot.core.db_models import (
     TenantMembershipRecord,
     UserRecord,
 )
-from security_db_helpers import candidate, login, mutation_headers
+from security_db_helpers import candidate, login, mutation_headers, seed_course_ref
 from test_database_security import _app, _professor_login
 
 requires_database = pytest.mark.skipif(
@@ -137,6 +137,8 @@ def test_platform_demand_exposes_only_aggregates(tmp_path: Path) -> None:
         json={"course_title": "Secure Systems", "access_policy": "tuebingen_enrolled"},
     )
     assert created.status_code == 200, created.text
+    upstream = _courses()["student-b"][0]
+    seed_course_ref(app.state.database, created.json()["course"]["id"], upstream)
     clients = {name: _client(app) for name in ("student-a", "student-b", "student-c")}
     sessions = {name: login(client, name) for name, client in clients.items()}
     for name in ("student-a", "student-b"):

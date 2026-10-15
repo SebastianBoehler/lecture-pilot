@@ -104,23 +104,6 @@ describe("Dashboard course workspace matching", () => {
     expect(screen.queryByText(/zxoic73@uni-tuebingen.de/)).not.toBeInTheDocument();
   });
 
-  it("shows course skeletons while university data synchronizes", () => {
-    renderDashboard(
-      {
-        ...realSession,
-        courses: [],
-        university_courses: [],
-        university_course_sync_status: "loading",
-      },
-      false,
-    );
-
-    expect(screen.getByRole("status")).toHaveTextContent("Loading your university courses");
-    expect(
-      screen.queryByRole("heading", { name: /natural language processing/i }),
-    ).not.toBeInTheDocument();
-  });
-
   it("honors the local demo bridge for non-enrolled accounts", () => {
     window.localStorage.setItem(
       "lecturepilot.demo.workspaceCourse",

@@ -24,7 +24,6 @@ const storedSession: LoginSession = {
     },
   ],
   university_courses: [],
-  university_course_sync_status: "ready",
 };
 
 it("clears an expired persisted session before rendering a protected route", async () => {

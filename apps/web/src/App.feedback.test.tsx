@@ -29,7 +29,6 @@ it("shows a qualified student's prompt on a later dashboard visit", async () => 
       courses: [],
       roles: ["student"],
       term: "Sommer 2026",
-      university_course_sync_status: "ready",
       username: "student01",
     }),
   );

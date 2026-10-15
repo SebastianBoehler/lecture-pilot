@@ -9,7 +9,6 @@ import type { LoginSession } from "../shared/types";
 export function ProfessorCourseSetupStep({
   courseSearchFailed,
   courseSuggestions,
-  courseSourceStatuses,
   courseReady,
   isCreating,
   isReady,
@@ -20,7 +19,6 @@ export function ProfessorCourseSetupStep({
 }: {
   courseSearchFailed: boolean;
   courseSuggestions: CourseTitleSuggestion[];
-  courseSourceStatuses: LoginSession["university_course_source_statuses"];
   courseReady: boolean;
   isCreating: boolean;
   isReady: boolean;
@@ -36,7 +34,6 @@ export function ProfessorCourseSetupStep({
       <CourseNameField
         courseSearchFailed={courseSearchFailed}
         courseSuggestions={courseSuggestions}
-        sourceStatuses={courseSourceStatuses}
         value={setup.courseTitle}
         onChange={(courseTitle) => onSetupChange({ ...setup, courseTitle })}
       />
