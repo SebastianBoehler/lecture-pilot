@@ -20,6 +20,11 @@ def alma_account_type(current_role: str | None) -> Literal["student", "professor
 def identity_account_type(
     *, provider: str, provider_claims: Mapping[str, Any] | None
 ) -> Literal["student", "professor"]:
+    local_role = (provider_claims or {}).get("lecturepilot_account_type")
+    if local_role in {"student", "professor"}:
+        return local_role
+    if provider == "local":
+        return "student"
     if provider != "tuebingen":
         return "student"
     current_role = (provider_claims or {}).get(ALMA_CURRENT_ROLE_CLAIM)

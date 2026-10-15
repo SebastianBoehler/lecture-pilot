@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field
 
 from lecturepilot.core.models import Course, TenantRole
 from lecturepilot.courses.university_models import (
@@ -14,12 +14,6 @@ from lecturepilot.courses.university_models import (
 
 
 AccountType = Literal["student", "professor"]
-
-
-class TuebingenLoginInput(BaseModel):
-    username: str = Field(min_length=1, max_length=120)
-    password: SecretStr = Field(min_length=1, max_length=500)
-    term: str = Field(default="Sommer 2026", min_length=1, max_length=80)
 
 
 class LoginResult(BaseModel):
@@ -53,9 +47,6 @@ class AccountResponse(BaseModel):
     university_courses: list[ExternalCourseCandidate] = Field(default_factory=list)
     university_course_sync_status: UniversityCourseSyncStatus = "ready"
     university_course_source_statuses: UniversityCourseSourceStatuses = Field(default_factory=dict)
-
-
-TuebingenLoginResult = LoginResult
 
 
 class AccountDisabledResponse(BaseModel):

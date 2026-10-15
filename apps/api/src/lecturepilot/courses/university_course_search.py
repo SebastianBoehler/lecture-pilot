@@ -35,7 +35,7 @@ class AlmaUniversityCourseSearch:
         limit: int,
     ) -> list[UniversityCourseSuggestion]:
         try:
-            # Keep the import lazy: university login support is optional, while this Alma page is public.
+            # Keep the optional wrapper import lazy; this Alma page needs no authentication.
             from tue_api_wrapper import AlmaClient
             from tue_api_wrapper.alma_course_search_client import search_courses
         except ImportError as exc:

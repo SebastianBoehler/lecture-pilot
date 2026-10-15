@@ -16,6 +16,10 @@ SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 EXEMPT_PATHS = frozenset(
     {
         "/auth/login",
+        "/auth/register",
+        "/auth/verify",
+        "/auth/password-reset",
+        "/auth/password-reset/confirm",
     }
 )
 DEFAULT_LOCAL_ORIGINS = (

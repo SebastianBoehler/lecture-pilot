@@ -1,75 +1,50 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
-
-from lecturepilot.identity.account_models import (
-    AccountResponse,
-    LoginResult,
-    TuebingenLoginInput,
-)
+from lecturepilot.identity.auth_validation import register_auth_validation
+from lecturepilot.identity.account_models import AccountResponse, LoginResult
 from lecturepilot.identity.account_responses import account_response, login_result
 from lecturepilot.identity.api_auth import request_context
 from lecturepilot.database import DatabaseConfigurationError
-from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.identity.local_account_models import PasswordLoginInput
+from lecturepilot.identity.local_accounts import LocalAccounts
+from lecturepilot.identity.local_account_routes import (
+    check_auth_origin,
+    register_local_account_routes,
+)
 from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME, SessionAuthSettings
 from lecturepilot.identity.session_cookie import attach_session_cookie, clear_session_cookie
 from lecturepilot.identity.tenancy import TenantContext
-from lecturepilot.identity.tuebingen_adapter import (
-    PendingUniversityLogin,
-    TuebingenIntegrationUnavailable,
-    TuebingenLoginError,
-)
 
 
 def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
+    register_auth_validation(app)
+    register_local_account_routes(app, tenant_id=course_tenant_id)
+
     @app.post("/auth/login", response_model=LoginResult)
-    def login(
-        input_data: TuebingenLoginInput,
-        response: Response,
-        background_tasks: BackgroundTasks,
-    ) -> LoginResult:
+    def login(input_data: PasswordLoginInput, request: Request, response: Response) -> LoginResult:
+        check_auth_origin(request)
         with app.state.observability.tool_span("auth_login") as span:
             try:
-                pending = app.state.tuebingen_adapter.authenticate(
-                    username=input_data.username,
-                    password=input_data.password.get_secret_value(),
-                    term=input_data.term,
-                )
-                identity = pending.initial_identity
-                sync_id = uuid4().hex
-                account = IdentityRepository(app.state.database).begin_login(
-                    identity,
-                    tenant_id=course_tenant_id,
-                    sync_id=sync_id,
-                )
-                issued = app.state.session_store.create(
-                    account,
+                result = LocalAccounts(app.state.database, course_tenant_id).sign_in(
+                    input_data.email,
+                    input_data.password.get_secret_value(),
+                    app.state.session_store,
                     ttl_minutes=SessionAuthSettings.from_env().ttl_minutes,
                 )
+                if result is None:
+                    span.set_outputs({"outcome": "error", "reason": "invalid_credentials"})
+                    raise HTTPException(
+                        401, "Email or password is incorrect, or email is not verified."
+                    )
+                account, issued = result
                 attach_session_cookie(response, issued.token)
-                background_tasks.add_task(
-                    _complete_university_sync,
-                    app,
-                    pending,
-                    course_tenant_id,
-                    sync_id,
-                )
-                span.set_outputs({"account_type": account.account_type, "outcome": "success"})
-                return login_result(account, term=identity.term, csrf_token=issued.csrf_token)
-            except TuebingenIntegrationUnavailable as exc:
-                span.set_outputs({"outcome": "error", "reason": "integration_unavailable"})
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-            except TuebingenLoginError as exc:
-                span.set_outputs({"outcome": "error", "reason": "invalid_credentials"})
-                raise HTTPException(status_code=401, detail=str(exc)) from exc
-            except PermissionError as exc:
-                span.set_outputs({"outcome": "error", "reason": "account_forbidden"})
-                raise HTTPException(status_code=403, detail=str(exc)) from exc
+                span.set_outputs({"outcome": "success", "account_type": account.account_type})
+                return login_result(account, term="", csrf_token=issued.csrf_token)
             except DatabaseConfigurationError as exc:
                 span.set_outputs({"outcome": "error", "reason": "database_unavailable"})
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
+                raise HTTPException(503, str(exc)) from exc
 
     @app.get("/me", response_model=AccountResponse)
     def current_account(
@@ -94,48 +69,3 @@ def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
                 }
             )
             return {"logged_out": True}
-
-
-def _complete_university_sync(
-    app: FastAPI,
-    pending: PendingUniversityLogin,
-    tenant_id: str,
-    sync_id: str,
-) -> None:
-    repository = IdentityRepository(app.state.database)
-    try:
-        with app.state.observability.tool_span("university_course_sync") as span:
-            identity = pending.synchronize(
-                on_source=lambda source, source_identity: repository.record_course_sync_source(
-                    source_identity,
-                    tenant_id=tenant_id,
-                    sync_id=sync_id,
-                    source=source,
-                )
-            )
-            applied = repository.complete_course_sync(
-                identity,
-                tenant_id=tenant_id,
-                sync_id=sync_id,
-            )
-            span.set_outputs(
-                {
-                    "applied": applied,
-                    "course_count": len(identity.courses),
-                    "outcome": (
-                        "ready"
-                        if applied and identity.sources_checked
-                        else "no_sources"
-                        if applied
-                        else "superseded"
-                    ),
-                    "source_count": len(identity.sources_checked),
-                    "warning_count": len(identity.warnings),
-                }
-            )
-    except Exception:
-        repository.fail_course_sync(
-            username=pending.initial_identity.username,
-            sync_id=sync_id,
-        )
-        return

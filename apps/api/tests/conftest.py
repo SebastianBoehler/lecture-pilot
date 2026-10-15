@@ -65,7 +65,7 @@ def _truncate_test_database(database_url: str) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE usage_counters, audit_events, course_enrollments, "
+                "TRUNCATE account_tokens, usage_counters, audit_events, course_enrollments, "
                 "course_external_refs, courses, external_course_observations, sessions, "
                 "tenant_memberships, external_identities, users CASCADE"
             )

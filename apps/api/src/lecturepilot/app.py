@@ -86,7 +86,6 @@ from lecturepilot.core.security_headers import (
 from lecturepilot.identity.session_auth import SessionAuthSettings
 from lecturepilot.identity.session_cookie_refresh import SessionCookieRefreshMiddleware
 from lecturepilot.identity.session_store import SessionStore
-from lecturepilot.identity.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.courses.university_course_routes import register_university_course_routes
 from lecturepilot.courses.university_course_search import AlmaUniversityCourseSearch
 from lecturepilot.learner.user_memory import UserMemoryStore
@@ -119,7 +118,6 @@ def create_app() -> FastAPI:
     app.state.model_usage = ModelUsageRecorder(app.state.database, tenant_id=COURSE_TENANT_ID)
     app.state.professor_usage = ProfessorUsageRepository(app.state.database)
     app.state.observability = observability_from_env()
-    app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.university_course_search = AlmaUniversityCourseSearch()
     app.state.agent_harness = LecturePilotHarness(
         model_client=NativeModelClient(app.state.model_usage)

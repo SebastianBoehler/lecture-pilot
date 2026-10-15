@@ -27,7 +27,7 @@ def test_alma_nonstudent_role_immediately_grants_professor_access_and_is_audited
 
     assert professor["account_type"] == "professor"
     assert professor["display_name"] == "Alma Professor"
-    assert professor["email"] == "alma-professor@example.edu"
+    assert professor["email"] == "alma-professor@uni-tuebingen.de"
     assert professor["university_role"] == "lecturer"
     assert professor["roles"] == ["professor"]
     assert "professor_status" not in professor
@@ -125,12 +125,9 @@ def _app(
 
 
 def _login(client: TestClient, username: str) -> dict:
-    response = client.post(
-        "/auth/login",
-        json={"username": username, "password": "university-password"},
-    )
-    assert response.status_code == 200, response.json()
-    return response.json()
+    from security_db_helpers import login
+
+    return login(client, username)
 
 
 def _identity(session, username: str) -> ExternalIdentityRecord:
@@ -158,7 +155,7 @@ class _RoleUniversityAdapter:
             UniversityLoginResult(
                 username=username,
                 display_name=username.replace("-", " ").title(),
-                email=f"{username}@example.edu",
+                email=f"{username}@uni-tuebingen.de",
                 term=term,
                 alma_current_role=current_role,
                 alma_available_roles=self.available_roles.get(username, [current_role]),

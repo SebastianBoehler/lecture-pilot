@@ -30,9 +30,32 @@ class FakeUniversityAdapter:
 
 
 def login(client: TestClient, username: str) -> dict:
+    # Seed trusted historical identity/enrollment fixtures independently of HTTP authentication.
+    from lecturepilot.identity.identity_repository import IdentityRepository
+    from lecturepilot.identity.local_account_models import LocalCredentialRecord
+    from lecturepilot.identity.local_passwords import hash_password
+
+    adapter = client.app.state.tuebingen_adapter
+    pending = adapter.authenticate(username=username, password="test-password", term="Sommer 2026")
+    identity = pending.synchronize()
+    identity = identity.model_copy(update={"email": f"{username}@uni-tuebingen.de"})
+    account = IdentityRepository(client.app.state.database).record_login(
+        identity,
+        tenant_id="tenant-tuebingen",
+    )
+    with client.app.state.database.session() as db:
+        credential = db.get(LocalCredentialRecord, identity.email)
+        if credential is None:
+            db.add(
+                LocalCredentialRecord(
+                    email=identity.email,
+                    user_id=account.user_id,
+                    password_hash=hash_password("test-password"),
+                )
+            )
     response = client.post(
         "/auth/login",
-        json={"username": username, "password": "test-password", "term": "Sommer 2026"},
+        json={"email": identity.email, "password": "test-password"},
     )
     assert response.status_code == 200, response.json()
     current = client.get("/me")

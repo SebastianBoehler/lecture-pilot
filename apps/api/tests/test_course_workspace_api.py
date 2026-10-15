@@ -137,22 +137,14 @@ def test_live_login_does_not_grant_courses_from_demo_flag(tmp_path: Path, monkey
     client.app.state.tuebingen_adapter = _FakeLoginAdapter()
     _create_workspace(client, "Grundlagen des Maschinellen Lernens", "01", "Introduction")
 
-    response = client.post(
-        "/auth/login",
-        json={"username": "student01", "password": "secret", "term": "Sommer 2026"},
-    )
+    from security_db_helpers import login
 
-    assert response.status_code == 200
-    assert _course_titles(response.json()) == []
+    assert _course_titles(login(client, "student01")) == []
 
     monkeypatch.setenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", "true")
-    response = client.post(
-        "/auth/login",
-        json={"username": "student01", "password": "secret", "term": "Sommer 2026"},
-    )
+    from security_db_helpers import login
 
-    assert response.status_code == 200
-    assert _course_titles(response.json()) == []
+    assert _course_titles(login(client, "student01")) == []
 
 
 def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path, caplog) -> None:

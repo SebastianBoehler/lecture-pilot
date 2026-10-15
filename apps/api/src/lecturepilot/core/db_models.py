@@ -16,15 +16,13 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from lecturepilot.core.db_base import Base
 
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 class UserRecord(Base):
@@ -271,3 +269,7 @@ class ModelUsageEventRecord(Base):
     cached_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     reasoning_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+# Register identity tables on the shared metadata.
+from lecturepilot.identity import local_account_models as _local_account_models  # noqa: E402,F401

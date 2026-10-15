@@ -92,7 +92,7 @@ def _rules_from_env() -> dict[str, RateLimit]:
 def _rule_for(scope: Scope, rules: dict[str, RateLimit]) -> RateLimit | None:
     method = str(scope.get("method", "")).upper()
     path = str(scope.get("path", ""))
-    if (method == "POST" and path == "/auth/login") or path.startswith("/join/"):
+    if (method == "POST" and path.startswith("/auth/")) or path.startswith("/join/"):
         return rules["login"]
     if method == "POST" and path in {"/agent/turn", "/agent/turn/stream"}:
         return rules["chat"]
@@ -110,6 +110,9 @@ def _rule_for(scope: Scope, rules: dict[str, RateLimit]) -> RateLimit | None:
 
 
 def _client_key(scope: Scope) -> str:
+    if str(scope.get("path", "")).startswith("/auth/"):
+        client = scope.get("client")
+        return str(client[0] if client else "unknown")
     headers = dict(scope.get("headers", []))
     auth_material = headers.get(b"authorization") or headers.get(b"cookie")
     if auth_material:

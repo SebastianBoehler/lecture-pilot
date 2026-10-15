@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import hashlib
@@ -8,6 +9,7 @@ import secrets
 from uuid import UUID
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from lecturepilot.database import Database
 from lecturepilot.core.db_models import SessionRecord, UserRecord
@@ -46,11 +48,22 @@ class SessionStore:
         self.database = database
         self.identities = IdentityRepository(database)
 
-    def create(self, account: AccountView, *, ttl_minutes: int) -> IssuedSession:
+    def create(
+        self,
+        account: AccountView,
+        *,
+        ttl_minutes: int,
+        database_session: Session | None = None,
+    ) -> IssuedSession:
         token = secrets.token_urlsafe(32)
         csrf_token = secrets.token_urlsafe(32)
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
-        with self.database.session() as session:
+        transaction = (
+            nullcontext(database_session)
+            if database_session is not None
+            else self.database.session()
+        )
+        with transaction as session:
             session.add(
                 SessionRecord(
                     token_hash=_hash(token),

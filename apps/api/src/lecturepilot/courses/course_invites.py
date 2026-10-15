@@ -116,7 +116,7 @@ def register_course_invite_routes(app: FastAPI, *, course_tenant_id: str) -> Non
         require_valid_code(course_id, code)
         if context.auth_mode != "session":
             raise HTTPException(
-                status_code=409, detail="Joining a course requires a university login."
+                status_code=409, detail="Joining a course requires a verified LecturePilot account."
             )
         try:
             course_uuid, user_uuid = UUID(course_id), UUID(context.user_id)
