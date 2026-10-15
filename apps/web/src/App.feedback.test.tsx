@@ -48,7 +48,7 @@ it("shows a qualified student's prompt on a later dashboard visit", async () => 
 });
 
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/zdv username/i), "student01");
-  await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
-  await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+  await user.type(screen.getByLabelText(/university email/i), "student01@uni-tuebingen.de");
+  await user.type(screen.getByLabelText(/^lecturepilot password$/i), "very-secret-password");
+  await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 }

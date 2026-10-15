@@ -15,6 +15,16 @@
       "changes": [
         {
           "title": {
+            "en": "Independent LecturePilot accounts",
+            "de": "Eigene LecturePilot-Konten"
+          },
+          "description": {
+            "en": "Create an account with your verified university email and a separate LecturePilot password. ZDV credential login and automatic Alma/ILIAS synchronization have been removed. Existing accounts can retain their course access; new students use lecturer-issued join links.",
+            "de": "Erstelle ein Konto mit bestätigter Uni-E-Mail und einem eigenen LecturePilot-Passwort. ZDV-Passwortanmeldung und automatische Alma/ILIAS-Synchronisierung wurden entfernt. Bestehende Konten können ihren Kurszugang behalten; neue Studierende nutzen Beitrittslinks der Lehrenden."
+          }
+        },
+        {
+          "title": {
             "en": "Bounded generation with review notes",
             "de": "Begrenzte Generierung mit Prüfhinweisen"
           },

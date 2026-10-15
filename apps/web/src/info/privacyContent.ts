@@ -4,13 +4,13 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
   en: {
     title: "Privacy and your data",
     intro:
-      "What LecturePilot saves, what reaches an AI provider, and what other people can see. This describes the university pilot as checked on 7 September 2026; institutional details still awaiting confirmation are listed below.",
+      "What LecturePilot saves, what reaches an AI provider, and what other people can see. This describes the university pilot with account authentication updated on 15 October 2026; institutional details still awaiting confirmation are listed below.",
     sections: [
       {
         id: "account",
         title: "Signing in and course access",
         paragraphs: [
-          "Your university sign-in is handled by the LecturePilot service to load your account role, courses and access rights. Your password is not stored in the web app or sent to an AI model provider. University authentication services process the sign-in.",
+          "LecturePilot accounts use a verified University of Tübingen email address and a separate password. Only a salted password hash is stored. Verification and password-reset links are sent through the configured email service. LecturePilot does not receive your ZDV password or sign in to Alma or ILIAS as you. Existing course access can be retained; new course access uses lecturer-issued join links.",
           "Being able to manage a course does not mean it is published to students. Access checks also apply to source files, learner workspaces and lecture availability.",
         ],
       },
@@ -88,13 +88,13 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
   de: {
     title: "Datenschutz und deine Daten",
     intro:
-      "Was LecturePilot speichert, was an einen KI-Anbieter gesendet wird und was andere sehen können. Stand des Hochschulpiloten: 7. September 2026. Noch institutionell zu bestätigende Angaben stehen unten.",
+      "Was LecturePilot speichert, was an einen KI-Anbieter gesendet wird und was andere sehen können. Kontenanmeldung aktualisiert am 15. Oktober 2026. Noch institutionell zu bestätigende Angaben stehen unten.",
     sections: [
       {
         id: "account",
         title: "Anmeldung und Kurszugang",
         paragraphs: [
-          "Die Anmeldung wird vom LecturePilot-Dienst verarbeitet, um Kontorolle, Kurse und Zugangsrechte zu laden. Dein Passwort wird nicht in der Web-App gespeichert oder an einen KI-Modellanbieter gesendet. Die Hochschuldienste verarbeiten die Authentifizierung.",
+          "LecturePilot-Konten nutzen eine bestätigte E-Mail-Adresse der Universität Tübingen und ein eigenes Passwort. Gespeichert wird nur ein gesalzener Passwort-Hash. Der konfigurierte E-Mail-Dienst sendet Bestätigungs- und Passwort-Reset-Links. LecturePilot erhält kein ZDV-Passwort und meldet sich nicht in deinem Namen bei Alma oder ILIAS an. Bestehender Kurszugang kann erhalten bleiben; neue Kurse nutzen Beitrittslinks der Lehrenden.",
           "Ein verwaltbarer Kurs ist nicht automatisch für Studierende veröffentlicht. Zugangsprüfungen gelten auch für Quellen, Lernworkspaces und verfügbare Vorlesungen.",
         ],
       },

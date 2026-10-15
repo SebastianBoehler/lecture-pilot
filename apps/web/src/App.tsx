@@ -16,6 +16,7 @@ import { clearSavedFlow } from "./professor/professorBuilderState";
 import { rememberReturnPath, takeReturnPath } from "./shell/returnPath";
 import { SessionExpiredNotice } from "./auth/SessionExpiredNotice";
 import { useStoredLoginSession } from "./auth/loginSessionStorage";
+import { readAccountLink } from "./auth/accountActions";
 import { logoutSession } from "./auth/sessionApi";
 import { clearAllPracticeExamDrafts } from "./exam/practiceExamDraft";
 import { usePublicMetadata } from "./info/usePublicMetadata";
@@ -42,7 +43,11 @@ function App() {
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const { navigate, route } = useAppRoute();
   const [session, setSession, restoringSession, sessionExpired] = useStoredLoginSession();
-  const view = !session && requiresSession(route.view) ? "login" : route.view;
+  const [accountLinkActive, setAccountLinkActive] = useState(
+    () => readAccountLink().mode !== "login",
+  );
+  const view =
+    accountLinkActive || (!session && requiresSession(route.view)) ? "login" : route.view;
   usePublicMetadata(view, locale);
   const feedback = useFeedbackPrompt(session, view === "dashboard");
   const workspace = useCourseWorkspace(route, session, setSession);
@@ -79,7 +84,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (!session || route.view !== "login") return;
+    if (!session || route.view !== "login" || accountLinkActive) return;
     const returnPath = takeReturnPath();
     const landing = landingView(session);
     // Course managers' landing depends on whether they already have courses.
@@ -89,7 +94,7 @@ function App() {
     }
     navigate(returnPath ?? pathForView(landing), { replace: true });
     setPanelMode(null);
-  }, [navigate, route.view, session, setPanelMode]);
+  }, [accountLinkActive, navigate, route.view, session, setPanelMode]);
 
   useEffect(() => {
     if (!restoringSession && !session && requiresSession(route.view)) {
@@ -223,16 +228,26 @@ function App() {
           lesson={lesson}
           courseManagerSession={courseManagerSession}
           restoringSession={restoringSession}
+          accountLinkActive={accountLinkActive}
           route={route}
           session={session}
           view={view}
           onLogout={handleLogout}
           // The login effect then continues to a remembered return path (e.g. a shared
           // course link) or the account's landing view.
-          onLogin={setSession}
-          onOpenDemo={() => setSession(localDemoSession)}
+          onLogin={(nextSession) => {
+            setAccountLinkActive(false);
+            setSession(nextSession);
+          }}
+          onOpenDemo={() => {
+            setAccountLinkActive(false);
+            setSession(localDemoSession);
+          }}
           onOpenCourseLink={openCourseLink}
-          onOpenProfessorDemo={() => setSession(localProfessorSession)}
+          onOpenProfessorDemo={() => {
+            setAccountLinkActive(false);
+            setSession(localProfessorSession);
+          }}
           onNavigatePath={navigate}
           onSetAttendance={(lectureId, attendance) => {
             workspace.setAttendance(lectureId, attendance);

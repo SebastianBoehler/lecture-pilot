@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n/i18n";
 import type { LoginSession } from "../shared/types";
-import { UniversityLoginForm } from "./UniversityLoginForm";
+import { AccountLoginForm } from "./AccountLoginForm";
 
 export function LoginView({
   onLogin,
@@ -23,7 +23,7 @@ export function LoginView({
           <p>{t("login.subtitle")}</p>
         </div>
         <div className="login-auth-panel">
-          <UniversityLoginForm
+          <AccountLoginForm
             onLogin={onLogin}
             onOpenDemo={onOpenDemo}
             onOpenProfessorDemo={onOpenProfessorDemo}

@@ -21,9 +21,9 @@ describe("LoginView", () => {
       <LoginView onLogin={vi.fn()} onOpenDemo={vi.fn()} onOpenProfessorDemo={vi.fn()} />,
     );
 
-    await user.type(screen.getByLabelText(/zdv username/i), "student01");
-    await user.type(screen.getByLabelText(/^password$/i), "secret");
-    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+    await user.type(screen.getByLabelText(/university email/i), "student01@uni-tuebingen.de");
+    await user.type(screen.getByLabelText(/^lecturepilot password$/i), "secret");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     expect(screen.getByRole("button", { name: /signing in/i })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(/loading your course workspace/i);
@@ -39,9 +39,7 @@ describe("LoginView", () => {
       screen.getByRole("heading", { level: 1, name: "Sign in to LecturePilot" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Preview without signing in" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/students and teaching staff use the same ZDV sign-in/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/a separate LecturePilot password/i)).toBeInTheDocument();
   });
 
   it("does not render demo entry points when development access is disabled", () => {
@@ -72,14 +70,14 @@ describe("LoginView", () => {
       />,
     );
 
-    const studentUsername = screen.getByLabelText(/zdv username/i);
-    const studentPassword = screen.getByLabelText(/^password$/i);
+    const studentUsername = screen.getByLabelText(/university email/i);
+    const studentPassword = screen.getByLabelText(/^lecturepilot password$/i);
     expect(studentUsername).toHaveAttribute("id", "username");
     expect(studentUsername).toHaveAttribute("name", "username");
     expect(studentUsername).toHaveAttribute("autocomplete", "username");
     expect(studentUsername).toHaveAttribute("autocapitalize", "none");
     expect(studentUsername).toHaveAttribute("spellcheck", "false");
-    expect(studentPassword).toHaveAttribute("id", "university-current-password");
+    expect(studentPassword).toHaveAttribute("id", "account-password");
     expect(studentPassword).toHaveAttribute("name", "password");
     expect(studentPassword).toHaveAttribute("autocomplete", "current-password");
     expect(studentPassword.closest("form")).toHaveAttribute("method", "post");
@@ -115,13 +113,15 @@ describe("LoginView", () => {
       />,
     );
 
-    expect(screen.getByRole("checkbox", { name: /remember username/i })).toBeChecked();
-    await user.type(screen.getByLabelText(/zdv username/i), "student01");
-    await user.type(screen.getByLabelText(/^password$/i), "student-secret");
-    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+    expect(screen.getByRole("checkbox", { name: /remember email/i })).toBeChecked();
+    await user.type(screen.getByLabelText(/university email/i), "student01@uni-tuebingen.de");
+    await user.type(screen.getByLabelText(/^lecturepilot password$/i), "student-secret");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
-    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBe("student01");
+    expect(window.localStorage.getItem("lecturepilot.rememberedAccountEmail")).toBe(
+      "student01@uni-tuebingen.de",
+    );
     expect(
       [...Array(window.localStorage.length).keys()]
         .map((index) => window.localStorage.getItem(window.localStorage.key(index) ?? ""))
@@ -131,7 +131,10 @@ describe("LoginView", () => {
 
   it("prefills and clears a previously remembered student username", async () => {
     const user = userEvent.setup();
-    window.localStorage.setItem("lecturepilot.rememberedStudentUsername", "student01");
+    window.localStorage.setItem(
+      "lecturepilot.rememberedAccountEmail",
+      "student01@uni-tuebingen.de",
+    );
 
     renderWithI18n(
       <LoginView
@@ -142,17 +145,15 @@ describe("LoginView", () => {
       />,
     );
 
-    expect(screen.getByLabelText(/zdv username/i)).toHaveValue("student01");
-    const remember = screen.getByRole("checkbox", { name: /remember username/i });
+    expect(screen.getByLabelText(/university email/i)).toHaveValue("student01@uni-tuebingen.de");
+    const remember = screen.getByRole("checkbox", { name: /remember email/i });
     expect(remember).toBeChecked();
 
     await user.click(remember);
 
-    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBeNull();
-    expect(window.localStorage.getItem("lecturepilot.rememberStudentUsernameEnabled")).toBe(
-      "false",
-    );
+    expect(window.localStorage.getItem("lecturepilot.rememberedAccountEmail")).toBeNull();
+    expect(window.localStorage.getItem("lecturepilot.rememberAccountEmailEnabled")).toBe("false");
 
-    expect(screen.getByRole("checkbox", { name: /remember username/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /remember email/i })).not.toBeChecked();
   });
 });

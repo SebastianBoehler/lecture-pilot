@@ -190,6 +190,18 @@
   border-color: var(--color-border-primary);
 }
 
+.login-form .tertiary-button {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border-color: transparent;
+  font-weight: 500;
+}
+
+.login-form .tertiary-button:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
 .login-form .professor-auth-modes button {
   border: 0;
   color: var(--color-text-secondary);

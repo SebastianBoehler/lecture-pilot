@@ -1,3 +1,4 @@
+import { accountMessages } from "./accountMessages";
 import { dashboardMessages } from "./dashboardMessages";
 import { practiceHistoryMessages } from "./practiceHistoryMessages";
 import { outlineMessages } from "./outlineMessages";
@@ -26,6 +27,7 @@ import { changeRequestMessages } from "./changeRequestMessages";
 
 export const messages = {
   en: {
+    ...accountMessages.en,
     ...practiceHistoryMessages.en,
     ...dashboardMessages.en,
     ...tutorMessages.en,
@@ -52,6 +54,7 @@ export const messages = {
     ...changeRequestMessages.en,
   },
   de: {
+    ...accountMessages.de,
     ...practiceHistoryMessages.de,
     ...dashboardMessages.de,
     ...tutorMessages.de,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-const identifierKey = "lecturepilot.rememberedStudentUsername";
-const rememberChoiceKey = "lecturepilot.rememberStudentUsernameEnabled";
+const identifierKey = "lecturepilot.rememberedAccountEmail";
+const rememberChoiceKey = "lecturepilot.rememberAccountEmailEnabled";
 
 export function useRememberedLoginIdentifier() {
   const [initialPreference] = useState(readRememberedLoginPreference);

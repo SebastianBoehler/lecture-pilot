@@ -62,6 +62,7 @@ type AppRoutesProps = {
   lesson: LessonSession;
   courseManagerSession: LoginSession | null;
   restoringSession: boolean;
+  accountLinkActive: boolean;
   route: AppRoute;
   session: LoginSession | null;
   view: View;
@@ -91,7 +92,7 @@ export function AppRoutes(props: AppRoutesProps) {
   );
   const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
-  if (restoringSession) return <ViewLoadingState />;
+  if (restoringSession && !props.accountLinkActive) return <ViewLoadingState />;
   if (route.view === "course-link") {
     return (
       <CourseLinkView
@@ -107,7 +108,8 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   // A course manager on the login route is being forwarded once their courses are known.
-  if (view === "login" && courseManagerSession) return <ViewLoadingState />;
+  if (view === "login" && courseManagerSession && !props.accountLinkActive)
+    return <ViewLoadingState />;
   if (view === "login") {
     return (
       <LoginView

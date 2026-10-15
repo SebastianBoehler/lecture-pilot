@@ -43,7 +43,7 @@ it("shares the enrolled-only course link by default and enables joining explicit
 
   const link = await screen.findByLabelText("Course link");
   expect(link).toHaveValue(`${window.location.origin}/courses/medvis`);
-  expect(screen.getByText(/everyone enrolled in alma or ilias/i)).toBeInTheDocument();
+  expect(screen.getByText(/enable a join link to admit new students/i)).toBeInTheDocument();
   const toggle = screen.getByRole("checkbox", { name: /allow joining with this link/i });
   await waitFor(() => expect(toggle).toBeEnabled());
   expect(toggle).not.toBeChecked();
@@ -65,7 +65,7 @@ it("opens accessible courses and explains enrollment otherwise", async () => {
   wrap(
     <CourseLinkView courseId="other" session={session} onOpenCourse={open} onSignIn={vi.fn()} />,
   );
-  expect(screen.getByText(/access follows your alma or ilias enrollment/i)).toBeInTheDocument();
+  expect(screen.getByText(/ask your lecturer for a join link/i)).toBeInTheDocument();
 });
 
 it("returns to the shared link after signing in", async () => {

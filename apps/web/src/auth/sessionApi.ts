@@ -2,8 +2,8 @@ import { apiUrl, readApiError } from "../shared/api";
 import { authRequestInit } from "../shared/authz";
 import type { LoginSession } from "../shared/types";
 
-type TuebingenLoginInput = {
-  username: string;
+type PasswordLoginInput = {
+  email: string;
   password: string;
 };
 
@@ -17,7 +17,7 @@ export class SessionRefreshError extends Error {
   }
 }
 
-export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
+export async function loginWithPassword(input: PasswordLoginInput): Promise<LoginSession> {
   return createSession("/auth/login", input);
 }
 

@@ -4,9 +4,9 @@ export const shareMessages = {
     "share.actionAria": "Share {course}",
     "share.title": "Share “{course}”",
     "share.helpEnrolled":
-      "Students open the course with their university login. Everyone enrolled in Alma or ILIAS has access.",
+      "Students sign in with their LecturePilot account. Existing course access is preserved; enable a join link to admit new students.",
     "share.helpJoin":
-      "Anyone with a university login and this link can join the course, even without Alma or ILIAS enrollment.",
+      "Anyone with a verified LecturePilot account and this link can join the course.",
     "share.qrLabel": "QR code for the course link",
     "share.link": "Course link",
     "share.copy": "Copy link",
@@ -14,8 +14,8 @@ export const shareMessages = {
     "share.slide": "Download slide with QR code",
     "share.slideEyebrow": "Your AI tutor for this course",
     "share.slideStep1": "Scan the QR code",
-    "share.slideStep2": "Sign in with your university account",
-    "share.slideStep2Join": "Sign in with your university account and join",
+    "share.slideStep2": "Sign in with your LecturePilot account",
+    "share.slideStep2Join": "Sign in with your LecturePilot account and join",
     "share.slideStep3": "Pick a lecture and start learning",
     "share.slideScan": "Scan to open",
     "share.allowJoin": "Allow joining with this link",
@@ -31,11 +31,11 @@ export const shareMessages = {
     "courseLink.point1": "Work through each lecture after it took place, at your own pace.",
     "courseLink.point2": "Check your understanding with short tasks and get feedback.",
     "courseLink.point3": "Your notes and progress stay private to you.",
-    "courseLink.login": "Sign in with your university account",
+    "courseLink.login": "Sign in with your LecturePilot account",
     "courseLink.join": "Join course",
     "courseLink.joining": "Joining…",
     "courseLink.notEnrolled":
-      "You do not have access to this course yet. Access follows your Alma or ILIAS enrollment; ask your lecturer for a join link if you just enrolled.",
+      "You do not have access to this course yet. Ask your lecturer for a join link.",
     "courseLink.invalid":
       "This course link is no longer valid. Ask your lecturer for the current link.",
     "courseLink.loading": "Opening course…",
@@ -48,9 +48,9 @@ export const shareMessages = {
     "share.actionAria": "{course} teilen",
     "share.title": "„{course}“ teilen",
     "share.helpEnrolled":
-      "Studierende öffnen den Kurs mit ihrem Uni-Login. Zugriff haben alle, die in Alma oder ILIAS eingeschrieben sind.",
+      "Studierende melden sich mit ihrem LecturePilot-Konto an. Bestehender Kurszugang bleibt erhalten; ein Beitrittslink ermöglicht neuen Studierenden den Zugang.",
     "share.helpJoin":
-      "Alle mit Uni-Login und diesem Link können dem Kurs beitreten, auch ohne Einschreibung in Alma oder ILIAS.",
+      "Alle mit bestätigtem LecturePilot-Konto und diesem Link können dem Kurs beitreten.",
     "share.qrLabel": "QR-Code für den Kurslink",
     "share.link": "Kurslink",
     "share.copy": "Link kopieren",
@@ -58,8 +58,8 @@ export const shareMessages = {
     "share.slide": "Folie mit QR-Code herunterladen",
     "share.slideEyebrow": "Dein KI-Tutor für diesen Kurs",
     "share.slideStep1": "QR-Code scannen",
-    "share.slideStep2": "Mit dem Uni-Account anmelden",
-    "share.slideStep2Join": "Mit dem Uni-Account anmelden und beitreten",
+    "share.slideStep2": "Mit dem LecturePilot-Konto anmelden",
+    "share.slideStep2Join": "Mit dem LecturePilot-Konto anmelden und beitreten",
     "share.slideStep3": "Vorlesung wählen und loslernen",
     "share.slideScan": "Scannen zum Öffnen",
     "share.allowJoin": "Beitritt über diesen Link erlauben",
@@ -79,7 +79,7 @@ export const shareMessages = {
     "courseLink.join": "Kurs beitreten",
     "courseLink.joining": "Trete bei…",
     "courseLink.notEnrolled":
-      "Du hast noch keinen Zugriff auf diesen Kurs. Der Zugriff folgt deiner Einschreibung in Alma oder ILIAS; frag deine Lehrperson nach einem Beitrittslink, falls du dich gerade erst eingeschrieben hast.",
+      "Du hast noch keinen Zugriff auf diesen Kurs. Frag deine Lehrperson nach einem Beitrittslink.",
     "courseLink.invalid":
       "Dieser Kurslink ist nicht mehr gültig. Frag deine Lehrperson nach dem aktuellen Link.",
     "courseLink.loading": "Kurs wird geöffnet…",

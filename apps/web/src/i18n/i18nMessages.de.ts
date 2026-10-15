@@ -114,13 +114,13 @@ export const deMessages: Record<MessageKey, string> = {
   "usage.workloadCanvas": "Vorlesungsgenerierung",
   "login.title": "Bei LecturePilot anmelden",
   "login.subtitle":
-    "Studierende und Lehrende nutzen dieselbe ZDV-Anmeldung. LecturePilot lädt anschließend deine Kurse und Kontorolle aus Alma.",
-  "login.username": "ZDV-Benutzername",
-  "login.password": "Passwort",
-  "login.submit": "Mit Uni Tübingen fortfahren",
+    "Nutze deine bestätigte Uni-E-Mail und ein eigenes LecturePilot-Passwort. Gib niemals dein ZDV-Passwort ein.",
+  "login.username": "Uni-E-Mail",
+  "login.password": "LecturePilot-Passwort",
+  "login.submit": "Anmelden",
   "login.submitting": "Anmeldung läuft",
   "login.status": "Dein Kursarbeitsbereich wird geladen. Das kann einen Moment dauern.",
-  "login.rememberUsername": "Benutzername auf diesem Gerät merken",
+  "login.rememberUsername": "E-Mail auf diesem Gerät merken",
   "login.rememberHelp":
     "Nur diese Kennung wird in diesem Browser gespeichert, niemals dein Passwort.",
   "login.demo": "Lokale Demo ansehen",

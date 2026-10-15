@@ -13,7 +13,7 @@ describe("LecturePilot app shell i18n", () => {
     await user.click(screen.getByRole("button", { name: /switch interface to german/i }));
 
     expect(screen.getByRole("heading", { name: /bei lecturepilot anmelden/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/zdv-benutzername/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/uni-e-mail/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.locale")).toBe("de");
     await waitFor(() => expect(document.documentElement.lang).toBe("de"));
 

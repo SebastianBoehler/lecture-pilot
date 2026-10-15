@@ -12,8 +12,8 @@ describe("LecturePilot app shell", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: /sign in to lecturepilot/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/zdv username/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/university email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^lecturepilot password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^lecturepilot$/i })).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(request).toEqual({
-      username: "student01",
+      email: "student01@uni-tuebingen.de",
       password: "very-secret-password",
     });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -266,9 +266,9 @@ describe("LecturePilot app shell", () => {
     );
     render(<App />);
 
-    await user.type(screen.getByLabelText(/zdv username/i), "alma-professor");
-    await user.type(screen.getByLabelText(/^password$/i), "university-password");
-    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+    await user.type(screen.getByLabelText(/university email/i), "alma-professor@uni-tuebingen.de");
+    await user.type(screen.getByLabelText(/^lecturepilot password$/i), "university-password");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     expect(
       await screen.findByRole("navigation", { name: /course builder progress/i }),
@@ -559,9 +559,9 @@ describe("LecturePilot app shell", () => {
 });
 
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/zdv username/i), "student01");
-  await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
-  await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+  await user.type(screen.getByLabelText(/university email/i), "student01@uni-tuebingen.de");
+  await user.type(screen.getByLabelText(/^lecturepilot password$/i), "very-secret-password");
+  await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 }
 
 function renderPublishedApp() {
