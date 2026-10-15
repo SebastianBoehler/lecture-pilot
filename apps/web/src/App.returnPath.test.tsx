@@ -17,7 +17,9 @@ it("continues to a shared join link after signing in from it", async () => {
   );
   render(<App />);
 
-  await user.click(await screen.findByRole("button", { name: /sign in with your university/i }));
+  await user.click(
+    await screen.findByRole("button", { name: /sign in with your lecturepilot account/i }),
+  );
   await user.click(await screen.findByRole("button", { name: /view local demo/i }));
 
   await waitFor(() => expect(window.location.pathname).toBe("/join/medvis/secret-code"));

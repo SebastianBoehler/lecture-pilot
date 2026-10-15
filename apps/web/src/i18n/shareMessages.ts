@@ -75,7 +75,7 @@ export const shareMessages = {
     "courseLink.point1": "Arbeite jede Vorlesung nach dem Termin in deinem Tempo durch.",
     "courseLink.point2": "Prüfe dein Verständnis mit kurzen Aufgaben und erhalte Feedback.",
     "courseLink.point3": "Deine Notizen und dein Fortschritt bleiben privat.",
-    "courseLink.login": "Mit Uni-Konto anmelden",
+    "courseLink.login": "Mit deinem LecturePilot-Konto anmelden",
     "courseLink.join": "Kurs beitreten",
     "courseLink.joining": "Trete bei…",
     "courseLink.notEnrolled":
