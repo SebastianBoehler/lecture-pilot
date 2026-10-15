@@ -39,15 +39,12 @@ async def test_planner_generates_valid_grounded_exam() -> None:
         duration_minutes=90,
         question_count=20,
         documents=[_document()],
-        ppi_sources={"ppi-42": ["Old exams often use short transfer scenarios."]},
     )
 
     assert len(exam.questions) == 20
-    assert exam.ppi_source_ids == ["ppi-42"]
     assert exam.source_ids == ["lecture-01:risk:definition"]
     assert len(exam.source_revision) == 64
     assert client.calls == 3
-    assert "non-authoritative pattern evidence" in client.messages[0][1]["content"]
     assert "independent correctness reviewer" in client.messages[1][0]["content"]
 
 
@@ -140,7 +137,6 @@ def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
     response_format = practice_exam_response_format(
         question_count=25,
         authoritative_source_ids={"lecture-02:tokens:definition", "lecture-01:nlp:definition"},
-        selected_ppi_source_ids=set(),
     )
     schema = response_format["json_schema"]["schema"]
     question_array = schema["properties"]["questions"]
@@ -154,7 +150,6 @@ def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
         "lecture-01:nlp:definition",
         "lecture-02:tokens:definition",
     ]
-    assert question["properties"]["ppi_pattern_ids"]["maxItems"] == 0
     assert _exam_output_token_budget(25) == 20_000
     assert _exam_output_token_budget(50) == 30_000
 
@@ -166,7 +161,6 @@ def test_generation_prompt_defines_the_supported_exam_markup_contract() -> None:
         duration_minutes=90,
         question_count=20,
         course_evidence="[lecture-01:risk:definition] Empirical risk.",
-        ppi_evidence="",
     )[0]["content"]
 
     assert "backticks" in system

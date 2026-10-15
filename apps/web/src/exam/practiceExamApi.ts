@@ -9,9 +9,6 @@ import {
   type PollStep,
 } from "../shared/polling";
 import type {
-  PpiCatalog,
-  PpiCredentials,
-  PpiExamSource,
   PracticeExam,
   PracticeExamGenerationInput,
   PracticeExamGenerationStatus,
@@ -108,45 +105,6 @@ export async function deletePracticeExam(courseId: string, examId: string, sessi
   await requestJson(`/courses/${courseId}/practice-exams/${examId}`, session, {
     method: "DELETE",
   });
-}
-
-export async function listPpiExamSources(courseId: string, session: LoginSession) {
-  return requestJson<PpiExamSource[]>(`/courses/${courseId}/ppi-exam-sources`, session);
-}
-
-export async function loadPpiCatalog(
-  courseId: string,
-  credentials: PpiCredentials,
-  session: LoginSession,
-) {
-  return requestJson<PpiCatalog>(`/courses/${courseId}/ppi-exam-sources/catalog`, session, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
-  });
-}
-
-export async function importPpiExamSource(
-  courseId: string,
-  credentials: PpiCredentials,
-  lectureId: number,
-  confirmTokenSpend: boolean,
-  session: LoginSession,
-) {
-  const result = await requestJson<{ source: PpiExamSource }>(
-    `/courses/${courseId}/ppi-exam-sources/imports`,
-    session,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...credentials,
-        ppi_lecture_id: lectureId,
-        confirm_token_spend: confirmTokenSpend,
-      }),
-    },
-  );
-  return result.source;
 }
 
 export async function downloadPracticeExamPdf(

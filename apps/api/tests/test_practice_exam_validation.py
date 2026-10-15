@@ -18,7 +18,6 @@ def test_validator_accepts_grounded_mixed_exam() -> None:
         exam,
         authoritative_source_ids={"lecture-01:risk"},
         question_count=20,
-        selected_ppi_source_ids={"ppi-42"},
     )
 
 
@@ -40,30 +39,15 @@ def test_validator_requires_requested_count_and_unique_prompts() -> None:
         )
 
 
-def test_validator_rejects_unknown_or_ppi_only_course_anchor() -> None:
+def test_validator_rejects_unknown_course_anchor() -> None:
     exam = _exam()
-    exam.questions[0].source_ids = ["ppi-42"]
-    exam.questions[0].ppi_pattern_ids = ["ppi-42"]
+    exam.questions[0].source_ids = ["unknown-source"]
 
     with pytest.raises(PracticeExamValidationError, match="course source"):
         validate_practice_exam(
             exam,
             authoritative_source_ids={"lecture-01:risk"},
             question_count=20,
-            selected_ppi_source_ids={"ppi-42"},
-        )
-
-
-def test_validator_rejects_unselected_ppi_pattern() -> None:
-    exam = _exam()
-    exam.questions[0].ppi_pattern_ids = ["ppi-99"]
-
-    with pytest.raises(PracticeExamValidationError, match="unselected PPI"):
-        validate_practice_exam(
-            exam,
-            authoritative_source_ids={"lecture-01:risk"},
-            question_count=20,
-            selected_ppi_source_ids={"ppi-42"},
         )
 
 
@@ -73,25 +57,6 @@ def test_validator_requires_coverage_of_every_available_lecture() -> None:
             _exam(),
             authoritative_source_ids={"lecture-01:risk", "lecture-02:generalization"},
             question_count=20,
-            selected_ppi_source_ids={"ppi-42"},
-        )
-
-
-def test_validator_rejects_copied_protocol_excerpt() -> None:
-    excerpt = (
-        "This unusually specific protocol sentence describes every hidden detail of the old exam "
-        "question and must never be reproduced verbatim by the generated practice exam."
-    )
-    exam = _exam()
-    exam.questions[0].prompt = excerpt
-
-    with pytest.raises(PracticeExamValidationError, match="copies retained PPI text"):
-        validate_practice_exam(
-            exam,
-            authoritative_source_ids={"lecture-01:risk"},
-            question_count=20,
-            selected_ppi_source_ids={"ppi-42"},
-            ppi_texts=[excerpt],
         )
 
 
@@ -112,7 +77,6 @@ def _exam() -> PracticeExam:
                     None if index % 2 else "Risk is expected loss, applied to this example."
                 ),
                 source_ids=["lecture-01:risk"],
-                ppi_pattern_ids=["ppi-42"] if index == 2 else [],
             )
         )
     return PracticeExam(
@@ -126,6 +90,5 @@ def _exam() -> PracticeExam:
         total_points=40,
         source_revision="b" * 64,
         source_ids=["lecture-01:risk"],
-        ppi_source_ids=["ppi-42"],
         questions=questions,
     )

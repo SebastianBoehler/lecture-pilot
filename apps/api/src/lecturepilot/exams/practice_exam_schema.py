@@ -7,7 +7,6 @@ def practice_exam_response_format(
     *,
     question_count: int,
     authoritative_source_ids: set[str],
-    selected_ppi_source_ids: set[str],
     choice_format: str = "single_answer",
 ) -> dict[str, Any]:
     return {
@@ -27,7 +26,6 @@ def practice_exam_response_format(
                         "maxItems": question_count,
                         "items": _question_schema(
                             authoritative_source_ids=authoritative_source_ids,
-                            selected_ppi_source_ids=selected_ppi_source_ids,
                             choice_format=choice_format,
                         ),
                     },
@@ -117,9 +115,7 @@ def practice_exam_review_response_format(
     }
 
 
-def _question_schema(
-    *, authoritative_source_ids: set[str], selected_ppi_source_ids: set[str], choice_format: str
-) -> dict[str, Any]:
+def _question_schema(*, authoritative_source_ids: set[str], choice_format: str) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "id": {"type": "string"},
         "kind": {
@@ -150,18 +146,7 @@ def _question_schema(
             "minItems": 1,
             "maxItems": 8,
         },
-        "ppi_pattern_ids": {
-            "type": "array",
-            "items": {"type": "string"},
-            "maxItems": 0,
-        },
     }
-    if selected_ppi_source_ids:
-        properties["ppi_pattern_ids"] = {
-            "type": "array",
-            "items": {"type": "string", "enum": sorted(selected_ppi_source_ids)},
-            "maxItems": 8,
-        }
     return {
         "type": "object",
         "additionalProperties": False,

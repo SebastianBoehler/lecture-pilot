@@ -29,7 +29,6 @@ def test_public_exam_hides_authoring_data() -> None:
     assert "rubric" not in question
     assert "reference_answer" not in question
     assert "source_ids" not in question
-    assert "ppi_pattern_ids" not in question
     assert payload["questions"][0]["prompt"] == "Question 1?"
     assert len(payload["questions"]) == 20
     assert public.instructions == ["Show your reasoning for open-ended questions."]
@@ -76,8 +75,8 @@ def test_generation_input_has_bounded_defaults_and_unique_sources() -> None:
     assert request.question_count == 25
     assert request.duration_minutes == 90
     assert PracticeExamGenerationInput(question_count=50).question_count == 50
-    with pytest.raises(ValueError, match="at most 1 item"):
-        PracticeExamGenerationInput(ppi_source_ids=["ppi-42", "ppi-43"])
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        PracticeExamGenerationInput(ppi_source_ids=["ppi-42"])
     with pytest.raises(ValueError):
         PracticeExamGenerationInput(question_count=19)
     with pytest.raises(ValueError):
@@ -129,7 +128,6 @@ def _exam(
             rubric=[] if index % 2 else ["Uses invariance."],
             reference_answer=(None if index % 2 else "A full-credit invariance explanation."),
             source_ids=[f"lecture-{index:02d}:section"],
-            ppi_pattern_ids=["ppi-42"] if index == 1 else [],
         )
         for index in range(1, 21)
     ]
@@ -144,6 +142,5 @@ def _exam(
         total_points=40,
         source_revision="f" * 64,
         source_ids=[question.source_ids[0] for question in questions],
-        ppi_source_ids=["ppi-42"],
         questions=questions,
     )

@@ -5,14 +5,13 @@ import { useI18n } from "../i18n/i18n";
 import {
   deletePracticeExam,
   generatePracticeExam,
-  listPpiExamSources,
   listPracticeExams,
   practiceExamGenerationStatus,
 } from "./practiceExamApi";
 import { clearPracticeExamDraft, ensurePracticeExamDraftAccount } from "./practiceExamDraft";
 import { savePracticeExamPdf, savePracticeExamSolutionPdf } from "./practiceExamDownload";
 import { PracticeExamSetup } from "./PracticeExamSetup";
-import type { PpiExamSource, PracticeExam, PracticeExamGenerationInput } from "./practiceExamTypes";
+import type { PracticeExam, PracticeExamGenerationInput } from "./practiceExamTypes";
 import { PracticeExamView } from "./PracticeExamView";
 import type { LoginSession, UniversityCourse } from "../shared/types";
 
@@ -25,7 +24,6 @@ export function PracticeExamPanel({
 }) {
   const { t } = useI18n();
   const [exams, setExams] = useState<PracticeExam[]>([]);
-  const [sources, setSources] = useState<PpiExamSource[]>([]);
   const [setupOpen, setSetupOpen] = useState(false);
   const [activeExam, setActiveExam] = useState<PracticeExam | null>(null);
   const [generationKey, setGenerationKey] = useState<string | null>(null);
@@ -42,14 +40,9 @@ export function PracticeExamPanel({
     if (!session) return;
     ensurePracticeExamDraftAccount(session.username);
     let active = true;
-    void Promise.all([
-      listPracticeExams(course.id, session),
-      listPpiExamSources(course.id, session),
-    ])
-      .then(([nextExams, nextSources]) => {
-        if (!active) return;
-        setExams(nextExams);
-        setSources(nextSources);
+    void listPracticeExams(course.id, session)
+      .then((nextExams) => {
+        if (active) setExams(nextExams);
       })
       .catch((caught: unknown) => {
         if (active) setError(caught instanceof Error ? caught.message : t("practice.loadFailed"));
@@ -242,13 +235,8 @@ export function PracticeExamPanel({
           course={course}
           error={error}
           generating={generating}
-          session={session}
-          sources={sources}
           onClose={() => setSetupOpen(false)}
           onGenerate={(input) => void generate(input)}
-          onSourceImported={(source) =>
-            setSources((current) => [source, ...current.filter((item) => item.id !== source.id)])
-          }
         />
       ) : null}
       {activeExam && session ? (

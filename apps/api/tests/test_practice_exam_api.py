@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from io import BytesIO
 from pathlib import Path
-from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
@@ -13,7 +11,6 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from lecturepilot.llm.model_client import ModelExecutionError
-from lecturepilot.exams.ppi_exam_source_store import PpiExamSourceStore
 from lecturepilot.exams.practice_exam_generation_jobs import PracticeExamGenerationStore
 from lecturepilot.exams.practice_exam_models import PracticeExam, PracticeExamQuestion
 from lecturepilot.exams.practice_exam_store import PracticeExamStore
@@ -35,7 +32,6 @@ def test_generation_returns_public_exam_and_replays_idempotently(tmp_path: Path)
     assert "rubric" not in first.text
     assert "reference_answer" not in first.text
     assert "source_ids" not in first.text
-    assert "ppi_source_ids" not in first.text
 
 
 def test_generation_accepts_comprehensive_50_question_exam(tmp_path: Path) -> None:
@@ -51,38 +47,29 @@ def test_generation_accepts_comprehensive_50_question_exam(tmp_path: Path) -> No
     assert len(response.json()["questions"]) == 50
 
 
-def test_generation_uses_only_published_unlocked_canvas_and_selected_private_source(
-    tmp_path: Path,
-) -> None:
+def test_generation_uses_only_published_unlocked_canvas(tmp_path: Path) -> None:
     client, planner = _client(tmp_path)
-    source = client.app.state.ppi_exam_source_store.import_archive(
-        user_id="student-a",
-        course_id="martius-ml",
-        lecture_id=42,
-        title="Machine Learning",
-        protocol_count=7,
-        filename="protocols.zip",
-        archive=_archive(),
-    )
 
-    response = _generate(client, ppi_source_ids=[source.id], key="practice-exam-key-0002")
+    response = _generate(client, key="practice-exam-key-0002")
 
     assert response.status_code == 200
     assert [item.lecture_id for item in planner.documents] == ["lecture-01"]
-    assert planner.ppi_sources == {"ppi-42": ["Typical old exam pattern."]}
 
 
-def test_generation_rejects_unowned_source_and_professor(tmp_path: Path) -> None:
+def test_generation_rejects_professor_and_retired_ppi_sources(tmp_path: Path) -> None:
     client, planner = _client(tmp_path)
-    missing = _generate(client, ppi_source_ids=["ppi-42"])
+    with_ppi = client.post(
+        "/courses/martius-ml/practice-exam-generations",
+        headers={**student_headers("student-a"), "Idempotency-Key": "practice-exam-key-ppi"},
+        json={"question_count": 20, "duration_minutes": 90, "ppi_source_ids": ["ppi-42"]},
+    )
     professor = client.post(
         "/courses/martius-ml/practice-exam-generations",
         headers={**professor_headers(), "Idempotency-Key": "practice-exam-key-professor"},
-        json={"question_count": 20, "duration_minutes": 90, "ppi_source_ids": []},
+        json={"question_count": 20, "duration_minutes": 90},
     )
 
-    assert missing.status_code == 404
-    assert missing.json()["detail"] == "Selected PPI source was not found."
+    assert with_ppi.status_code == 422
     assert professor.status_code == 403
     assert planner.calls == 0
 
@@ -183,17 +170,12 @@ def _generate(
     client: TestClient,
     *,
     question_count: int = 20,
-    ppi_source_ids: list[str] | None = None,
     key: str = "practice-exam-key-0001",
 ):
     return client.post(
         "/courses/martius-ml/practice-exam-generations",
         headers={**student_headers("student-a"), "Idempotency-Key": key},
-        json={
-            "question_count": question_count,
-            "duration_minutes": 90,
-            "ppi_source_ids": ppi_source_ids or [],
-        },
+        json={"question_count": question_count, "duration_minutes": 90},
     )
 
 
@@ -210,7 +192,6 @@ def _client(
     app.state.practice_exam_generation_store = PracticeExamGenerationStore(
         workspace.layout, lease_seconds=30
     )
-    app.state.ppi_exam_source_store = PpiExamSourceStore(workspace.layout)
     planner = _Planner()
     app.state.practice_exam_planner = planner
     return TestClient(app, raise_server_exceptions=raise_server_exceptions), planner
@@ -221,14 +202,12 @@ class _Planner:
         self.calls = 0
         self.error: Exception | None = None
         self.documents: list[CanvasDocument] = []
-        self.ppi_sources: dict[str, list[str]] = {}
 
     async def plan(self, **kwargs) -> PracticeExam:
         self.calls += 1
         if self.error:
             raise self.error
         self.documents = kwargs["documents"]
-        self.ppi_sources = kwargs["ppi_sources"]
         questions = [
             PracticeExamQuestion(
                 id=f"q-{index:02d}",
@@ -245,7 +224,6 @@ class _Planner:
                     else "Empirical risk averages observed loss and applies it to the stated decision."
                 ),
                 source_ids=["lecture-01:risk:definition"],
-                ppi_pattern_ids=[],
             )
             for index in range(1, kwargs["question_count"] + 1)
         ]
@@ -260,7 +238,6 @@ class _Planner:
             total_points=sum(item.points for item in questions),
             source_revision="b" * 64,
             source_ids=["lecture-01:risk:definition"],
-            ppi_source_ids=sorted(kwargs["ppi_sources"]),
             questions=questions,
         )
 
@@ -288,10 +265,3 @@ def _document() -> CanvasDocument:
             )
         ],
     )
-
-
-def _archive() -> bytes:
-    content = BytesIO()
-    with ZipFile(content, "w") as bundle:
-        bundle.writestr("questions.txt", "Typical old exam pattern.")
-    return content.getvalue()

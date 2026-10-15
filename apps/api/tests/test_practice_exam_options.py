@@ -25,7 +25,6 @@ def test_exam_rejects_equivalent_numeric_choices(options):
             exam,
             authoritative_source_ids={"lecture-01:risk"},
             question_count=20,
-            selected_ppi_source_ids={"ppi-42"},
         )
 
 
@@ -36,7 +35,6 @@ def test_exam_accepts_distinct_numeric_choices():
         exam,
         authoritative_source_ids={"lecture-01:risk"},
         question_count=20,
-        selected_ppi_source_ids={"ppi-42"},
     )
 
 

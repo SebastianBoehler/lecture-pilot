@@ -20,7 +20,7 @@ describe("local demo course discovery", () => {
       if (url.endsWith("/courses")) {
         return { ok: true, json: async () => [...localDemoSession.courses, localCourse] };
       }
-      if (url.endsWith("/practice-exams") || url.endsWith("/ppi-exam-sources")) {
+      if (url.endsWith("/practice-exams")) {
         return { ok: true, json: async () => [] };
       }
       return fixtureFetch(url, init);

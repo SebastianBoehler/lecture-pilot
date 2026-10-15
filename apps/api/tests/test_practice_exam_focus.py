@@ -100,7 +100,6 @@ def test_generation_prompt_prioritizes_goals_after_required_coverage():
         duration_minutes=90,
         question_count=20,
         course_evidence="[lecture-01:risk:definition] Empirical risk",
-        ppi_evidence="",
         learner_focus=[
             {
                 "goal_title": "Empirical risk",

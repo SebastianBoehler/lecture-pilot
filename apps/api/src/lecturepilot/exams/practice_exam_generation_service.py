@@ -63,7 +63,6 @@ async def _generate_owned(app, *, job, request_key, context, input_data, **kwarg
         emit_metadata_event(
             "practice_exam.generated",
             question_count=len(exam.questions),
-            ppi_source_count=len(input_data.ppi_source_ids),
             status="completed",
         )
         return public_practice_exam(exam)

@@ -22,7 +22,6 @@ from lecturepilot.exams.practice_exam_models import (
 )
 from lecturepilot.exams.practice_exam_prompt import (
     authoritative_canvas_evidence,
-    ppi_pattern_evidence,
     practice_exam_messages,
     practice_exam_review_messages,
 )
@@ -107,7 +106,6 @@ class PracticeExamPlanner:
         duration_minutes: int,
         question_count: int,
         documents: list[CanvasDocument],
-        ppi_sources: dict[str, list[str]],
         choice_format: str = "single_answer",
         learner_focus: list[dict] | None = None,
     ) -> PracticeExam:
@@ -119,12 +117,9 @@ class PracticeExamPlanner:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
-        ppi_evidence = ppi_pattern_evidence(ppi_sources)
-        ppi_texts = [text for texts in ppi_sources.values() for text in texts]
         response_format = practice_exam_response_format(
             question_count=question_count,
             authoritative_source_ids=authoritative_ids,
-            selected_ppi_source_ids=set(ppi_sources),
             choice_format=choice_format,
         )
         repair_error: str | None = None
@@ -138,7 +133,6 @@ class PracticeExamPlanner:
                 duration_minutes=duration_minutes,
                 question_count=question_count,
                 course_evidence=course_evidence,
-                ppi_evidence=ppi_evidence,
                 repair_error=repair_error,
                 choice_format=choice_format,
                 learner_focus=learner_focus,
@@ -163,15 +157,12 @@ class PracticeExamPlanner:
                     course_id=course_id,
                     language=language,
                     duration_minutes=duration_minutes,
-                    source_revision=_evidence_revision(course_evidence, ppi_sources),
-                    ppi_source_ids=sorted(ppi_sources),
+                    source_revision=_evidence_revision(course_evidence),
                 )
                 validate_practice_exam(
                     exam,
                     authoritative_source_ids=authoritative_ids,
                     question_count=question_count,
-                    selected_ppi_source_ids=set(ppi_sources),
-                    ppi_texts=ppi_texts,
                     choice_format=choice_format,
                 )
                 review = await self.model_client.complete_exam(
@@ -234,7 +225,6 @@ def _exam_from_payload(
     language: str,
     duration_minutes: int,
     source_revision: str,
-    ppi_source_ids: list[str],
 ) -> PracticeExam:
     questions = []
     failures: dict[str, str] = {}
@@ -268,15 +258,12 @@ def _exam_from_payload(
         total_points=sum(item.points for item in questions),
         source_revision=source_revision,
         source_ids=used_sources,
-        ppi_source_ids=ppi_source_ids,
         questions=questions,
     )
 
 
-def _evidence_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) -> str:
-    canonical = json.dumps(
-        {"course": course_evidence, "ppi": ppi_sources}, sort_keys=True, ensure_ascii=False
-    )
+def _evidence_revision(course_evidence: str) -> str:
+    canonical = json.dumps({"course": course_evidence}, sort_keys=True, ensure_ascii=False)
     return sha256(canonical.encode("utf-8")).hexdigest()
 
 

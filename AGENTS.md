@@ -38,7 +38,7 @@ cp .env.local.example .env.local
 Account registration requires verified university email and a separate LecturePilot password.
 See `docs/local-accounts.md` for SMTP, recovery and role administration. Never receive ZDV
 credentials or reintroduce university-session scraping. The optional wrapper supports public
-Alma search and separate PPI accounts only.
+Alma search only; LecturePilot takes no third-party account credentials.
 
 ```bash
 pip install -e "apps/api[tuebingen]"
@@ -74,7 +74,6 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     memories/{global.md,preferences.json,memory-trace.jsonl}
     courses/<course-id>/
       {progress.json,last-visit.json}
-      exam-sources/ppi/<ppi-lecture-id>/{manifest.json,source.zip,normalized/}
       practice-exam-generations/<request-key-hash>.json
       practice-exams/<exam-id>/{exam.json,exam.pdf,solutions.pdf,attempts/<uuid>.json}
       memories/{course.md,memory-trace.jsonl}
@@ -191,7 +190,7 @@ authoring/           canvas draft generation, quality, repair, publication
 canvas/              canvas Markdown/models/store, annotations, predictions, languages
 core/                shared API models, storage layout, durable files, audit, observability
 courses/             course access, schedules, updates, sharing, university courses
-exams/               exam readiness, practice exams, PPI exam sources
+exams/               exam readiness, practice exams
 identity/            auth, verified email accounts, SMTP, sessions, CSRF, tenancy
 learner/             gates, coaching, assessments, review queue, profile and memory
 learning_design/     learning intent, goals, practice and teaching design, learning maps
@@ -298,9 +297,7 @@ professor/ profile/ shared/ shell/ speech/ test/
   The tutor receives bounded, lecture-scoped history from saved readiness results
   and practice submissions. Practice answers remain ungraded, assistance unknown;
   history never passes gates. Students can review/delete their own submissions.
-  PPI protocols may inform question patterns only; every question must remain
-  anchored to unlocked published course evidence and must not copy protocol
-  wording.
+  Every question must remain anchored to unlocked published course evidence.
 - Before canvas generation, the source-routing agent must semantically assign
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
@@ -413,7 +410,7 @@ professor/ profile/ shared/ shell/ speech/ test/
   "New since your last visit" markers (`course_last_visit.py`, learner `last-visit.json`) and one
   "Next up" card (best next action, due reviews, ICS export). The course workspace has two tabs:
   Lectures and Exam prep, whose modes are the quick graded readiness check and the full mock
-  practice exam (with PPI import).
+  practice exam.
 - Course search (`lecture_search.py`, `learner_study_routes.py`) covers only released, published
   teaching blocks the learner may access; never checkpoints, quizzes, predictions, components or
   hidden assessment content, and never logs query text. Learners can export their own tutor
@@ -493,9 +490,6 @@ professor/ profile/ shared/ shell/ speech/ test/
   drafting fail with an actionable 503; never fall back to degraded parsing.
 - Never commit private professor material, real credentials, provider keys, or
   learner workspace data.
-- PPI credentials are request-only. Retained PPI archives and normalized text
-  remain private below the authenticated learner course root until the learner
-  deletes the source, resets that course workspace, or deletes the account.
 - Reject hidden paths, absolute paths, `..` traversal, unsupported extensions,
   and oversized files in backend file APIs.
 - Derive tenant/course/user authority from backend session/profile context, not

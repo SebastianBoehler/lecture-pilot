@@ -11,8 +11,7 @@
 .practice-exam-dialog > footer,
 .practice-exam-library > li,
 .practice-exam-view-actions,
-.practice-exam-settings,
-.practice-ppi-credentials {
+.practice-exam-settings {
   display: flex;
   align-items: center;
   justify-content: space-between;

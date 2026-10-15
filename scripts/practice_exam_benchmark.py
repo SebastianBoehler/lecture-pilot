@@ -128,7 +128,6 @@ async def benchmark_model(
                 duration_minutes=exam.duration_minutes,
                 question_count=len(exam.questions),
                 documents=documents,
-                ppi_sources=fixture.get("ppi_sources", {}),
             )
             result["generated_exam"] = generated.model_dump(mode="json")
             result["generation_status"] = "accepted_by_production_validator"

@@ -37,8 +37,7 @@ A fixture is a JSON object with:
 - `candidate`: a serialized `PracticeExam` containing at least 20 questions.
 - `gold`: a map from every question ID to `{ "valid": true|false, "category":
 "..." }`, labelled independently before any provider run.
-- Optional `source_metadata` and `ppi_sources` for page provenance and
-  non-authoritative question-pattern challenges.
+- Optional `source_metadata` for page provenance.
 
 Include valid controls alongside wrong keys, wrong calculations, unsupported
 reference answers, multiple correct options, and out-of-scope topics citing

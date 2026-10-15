@@ -42,13 +42,9 @@ describe("Dashboard study tool loading", () => {
     );
     expect(fetchMock).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /full mock exam/i }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/course-1/practice-exams"),
-      expect.any(Object),
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/courses/course-1/ppi-exam-sources"),
       expect.any(Object),
     );
     await user.click(screen.getByRole("tab", { name: "Lectures" }));
@@ -58,6 +54,6 @@ describe("Dashboard study tool loading", () => {
       "true",
     );
     expect(screen.getByRole("button", { name: "Generate exam" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

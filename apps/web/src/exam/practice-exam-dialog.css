@@ -122,8 +122,7 @@ body:has(.practice-exam-dialog[open]) {
   font: inherit;
 }
 
-.practice-exam-settings label,
-.practice-ppi-credentials label {
+.practice-exam-settings label {
   display: grid;
   gap: 7px;
   color: var(--color-text-primary);
@@ -141,58 +140,10 @@ body:has(.practice-exam-dialog[open]) {
   font-size: 14px;
 }
 
-.practice-exam-dialog-body > section {
-  margin-top: 8px;
-  border-top: 1px solid var(--color-border-primary);
-  padding-top: 18px;
-}
-
-.practice-exam-section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.practice-exam-section-heading h3 {
-  font-size: 17px;
-}
-
-.practice-exam-section-heading span {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-}
-
-.practice-empty-copy,
-.practice-exam-dialog section > p {
+.practice-empty-copy {
   margin-top: 8px;
   color: var(--color-text-secondary);
   font-size: 14px;
-}
-
-.practice-source-list {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0;
-}
-
-.practice-source-list label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.practice-source-list button {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  width: 100%;
-  text-align: left;
-}
-
-.practice-source-list button span:last-child {
-  color: var(--color-text-secondary);
-  font-size: 13px;
 }
 
 .practice-exam-error {
@@ -219,19 +170,12 @@ body:has(.practice-exam-dialog[open]) {
     padding: 16px;
   }
 
-  .practice-exam-settings,
-  .practice-ppi-credentials {
+  .practice-exam-settings {
     align-items: stretch;
     flex-direction: column;
   }
 
   .practice-exam-settings input {
     width: 100%;
-  }
-
-  .practice-exam-section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
   }
 }

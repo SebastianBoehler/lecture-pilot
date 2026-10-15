@@ -21,7 +21,7 @@ describe("practice exam API", () => {
     try {
       const pending = generatePracticeExam(
         "course-1",
-        { question_count: 25, duration_minutes: 90, ppi_source_ids: [] },
+        { question_count: 25, duration_minutes: 90 },
         "original-key",
         session,
       );
@@ -51,7 +51,7 @@ describe("practice exam API", () => {
     try {
       const pending = generatePracticeExam(
         "course-1",
-        { question_count: 25, duration_minutes: 90, ppi_source_ids: [] },
+        { question_count: 25, duration_minutes: 90 },
         "original-key",
         session,
         controller.signal,
@@ -79,7 +79,7 @@ describe("practice exam API", () => {
 
     await generatePracticeExam(
       "course-1",
-      { question_count: 25, duration_minutes: 90, ppi_source_ids: ["ppi-42"] },
+      { question_count: 25, duration_minutes: 90 },
       "practice-exam-request-0001",
       session,
     );
@@ -91,7 +91,6 @@ describe("practice exam API", () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       question_count: 25,
       duration_minutes: 90,
-      ppi_source_ids: ["ppi-42"],
     });
   });
 

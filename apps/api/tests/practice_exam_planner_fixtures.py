@@ -14,7 +14,6 @@ def _plan_args() -> dict:
         "duration_minutes": 90,
         "question_count": 20,
         "documents": [_document()],
-        "ppi_sources": {},
     }
 
 
@@ -62,7 +61,6 @@ def _payload() -> dict:
                     else "Risk is the expected loss; empirical risk is its sample estimate."
                 ),
                 "source_ids": ["lecture-01:risk:definition"],
-                "ppi_pattern_ids": [],
             }
         )
     return {

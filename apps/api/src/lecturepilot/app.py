@@ -61,9 +61,6 @@ from lecturepilot.core.metadata_events import configure_metadata_file_logging, e
 from lecturepilot.core.observability import observability_from_env
 from lecturepilot.llm.professor_usage import ProfessorUsageRepository
 from lecturepilot.llm.professor_usage_routes import register_professor_usage_routes
-from lecturepilot.exams.ppi_exam_source_routes import register_ppi_exam_source_routes
-from lecturepilot.exams.ppi_exam_source_service import PpiExamSourceService
-from lecturepilot.exams.ppi_exam_source_store import PpiExamSourceStore
 from lecturepilot.exams.practice_exam_generation_jobs import PracticeExamGenerationStore
 from lecturepilot.exams.practice_exam_planner import NativePracticeExamClient, PracticeExamPlanner
 from lecturepilot.exams.practice_exam_pdf import PracticeExamPdfService
@@ -140,8 +137,6 @@ def create_app() -> FastAPI:
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
     app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
     app.state.analytics_store = AnalyticsStore(app.state.canvas_workspace.layout)
-    app.state.ppi_exam_source_store = PpiExamSourceStore(app.state.canvas_workspace.layout)
-    app.state.ppi_exam_source_service = PpiExamSourceService(app.state.ppi_exam_source_store)
     app.state.practice_exam_store = PracticeExamStore(app.state.canvas_workspace.layout)
     app.state.practice_exam_pdf_service = PracticeExamPdfService(app.state.practice_exam_store)
     app.state.practice_exam_generation_store = PracticeExamGenerationStore(
@@ -274,7 +269,6 @@ def create_app() -> FastAPI:
         seeded_course=COURSE,
         lectures=LECTURES,
     )
-    register_ppi_exam_source_routes(app, **seeded_route_args)
     register_practice_exam_routes(app, **seeded_route_args)
     register_practice_exam_solution_routes(app, **seeded_route_args)
     register_practice_exam_attempt_routes(app, **seeded_route_args)

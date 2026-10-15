@@ -116,7 +116,7 @@ async def test_practice_exams_wait_for_slots_held_by_other_jobs(monkeypatch) -> 
             job=SimpleNamespace(course_id="course-1", attempt=1),
             request_key="practice-exam-key-0001",
             context=SimpleNamespace(user_id="student-1"),
-            input_data=SimpleNamespace(ppi_source_ids=[]),
+            input_data=SimpleNamespace(),
         )
     )
     await asyncio.sleep(0.05)

@@ -56,6 +56,7 @@ def _reset_course_root(course_root: Path, request: LearnerWorkspaceResetInput) -
     if request.reset_progress:
         deleted_paths += _delete_path(course_root / "progress.json")
     if request.reset_practice_exams:
+        # Retired PPI imports stay deletable with the rest of the learner's exam data.
         deleted_paths += _delete_path(course_root / "exam-sources")
         deleted_paths += _delete_path(course_root / "practice-exam-generations")
         deleted_paths += _delete_path(course_root / "practice-exams")

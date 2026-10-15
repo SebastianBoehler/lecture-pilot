@@ -19,7 +19,7 @@ describe("PracticeExamPanel", () => {
     });
 
     try {
-      vi.stubGlobal("fetch", listFetch([], []));
+      vi.stubGlobal("fetch", listFetch([]));
       const user = userEvent.setup();
       renderPanel();
       await screen.findByRole("heading", { name: "Practice exams" });
@@ -42,7 +42,7 @@ describe("PracticeExamPanel", () => {
   });
 
   it("shows the empty state and 25 question / 90 minute defaults", async () => {
-    vi.stubGlobal("fetch", listFetch([], []));
+    vi.stubGlobal("fetch", listFetch([]));
     const user = userEvent.setup();
     renderPanel();
 
@@ -65,20 +65,6 @@ describe("PracticeExamPanel", () => {
     await user.clear(questionInput);
     await user.type(questionInput, "50");
     expect(within(dialog).getByRole("button", { name: "Generate 50-question exam" })).toBeEnabled();
-  });
-
-  it("reuses cached PPI material without asking for credentials", async () => {
-    vi.stubGlobal("fetch", listFetch([], [ppiSource()]));
-    const user = userEvent.setup();
-    renderPanel();
-    await screen.findByRole("heading", { name: "Practice exams" });
-    await user.click(screen.getByRole("button", { name: "Generate exam" }));
-
-    const dialog = screen.getByRole("dialog", { name: "Generate practice exam" });
-    expect(within(dialog).getByText("Ready for exam generation")).toBeInTheDocument();
-    expect(within(dialog).getByText(/Machine Learning.*7 protocols/i)).toBeInTheDocument();
-    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText("PPI password")).not.toBeInTheDocument();
   });
 
   it("generates one online exam and keeps unsubmitted answers in the tab draft", async () => {
@@ -144,7 +130,7 @@ describe("PracticeExamPanel", () => {
   });
 
   it("ships the practice exam flow in German", async () => {
-    vi.stubGlobal("fetch", listFetch([], []));
+    vi.stubGlobal("fetch", listFetch([]));
     renderPanel("de");
     expect(await screen.findByRole("heading", { name: "Übungsprüfungen" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Prüfung erstellen" })).toBeInTheDocument();
@@ -169,10 +155,8 @@ const course: UniversityCourse = {
   term: "Summer 2026",
 };
 
-function listFetch(exams: unknown[], sources: unknown[]) {
-  return vi.fn(async (input: RequestInfo | URL) =>
-    json(String(input).endsWith("/ppi-exam-sources") ? sources : exams),
-  );
+function listFetch(exams: unknown[]) {
+  return vi.fn(async () => json(exams));
 }
 
 function generationFetch() {
@@ -213,19 +197,6 @@ function exam() {
       },
       { id: "q-02", kind: "open_ended", prompt: "Explain risk.", points: 2, options: [] },
     ],
-  };
-}
-
-function ppiSource() {
-  return {
-    id: "ppi-42",
-    ppi_lecture_id: 42,
-    title: "Machine Learning",
-    protocol_count: 7,
-    imported_at: "2026-07-31T10:00:00Z",
-    source_filename: "protocols.zip",
-    archive_sha256: "b".repeat(64),
-    files: [],
   };
 }
 

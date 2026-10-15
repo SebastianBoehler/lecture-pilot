@@ -19,10 +19,7 @@ from lecturepilot.llm.model_usage_total import model_usage_total
 from lecturepilot.llm.usage_quota import UsageQuotaExceeded
 from lecturepilot.core.models import Course, Lecture
 from lecturepilot.exams.practice_exam_models import PracticeExam, PracticeExamGenerationInput
-from lecturepilot.exams.practice_exam_prompt import (
-    MAX_PPI_EVIDENCE_CHARS,
-    authoritative_canvas_evidence,
-)
+from lecturepilot.exams.practice_exam_prompt import authoritative_canvas_evidence
 from lecturepilot.identity.tenancy import TenantContext
 
 
@@ -65,23 +62,6 @@ async def generate_practice_exam(
             status_code=404,
             detail="Publish and unlock at least one lecture canvas before generating an exam.",
         )
-    ppi_sources: dict[str, list[str]] = {}
-    ppi_excerpt_limit = MAX_PPI_EVIDENCE_CHARS // max(1, len(input_data.ppi_source_ids))
-    for source_id in input_data.ppi_source_ids:
-        try:
-            ppi_sources[source_id] = [
-                text
-                for _path, text in app.state.ppi_exam_source_store.normalized_text(
-                    user_id=context.user_id,
-                    course_id=course_id,
-                    source_id=source_id,
-                    max_characters=ppi_excerpt_limit,
-                )
-            ]
-        except FileNotFoundError as exc:
-            raise HTTPException(
-                status_code=404, detail="Selected PPI source was not found."
-            ) from exc
     _, authoritative_ids = authoritative_canvas_evidence(documents)
     learner_focus = []
     progress_store = CoachingProgressStore(app.state.canvas_workspace.layout)
@@ -132,7 +112,6 @@ async def generate_practice_exam(
                         duration_minutes=input_data.duration_minutes,
                         question_count=input_data.question_count,
                         documents=documents,
-                        ppi_sources=ppi_sources,
                         choice_format=input_data.choice_format,
                         learner_focus=learner_focus,
                     )

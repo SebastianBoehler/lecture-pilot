@@ -24,15 +24,15 @@ Production web builds do not render either development demo login.
 
 ## Route inventory
 
-| Class                       | Routes                                                                                                                                  | Required object check                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`, register/verify/password-reset routes                                                                | Rate-limited; submitted credentials are never logged or returned                         |
-| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`, `GET\|PUT\|DELETE /me/course-support-requests`                                 | Current opaque session; course requests need a student and an own Alma/ILIAS observation |
-| Platform administration     | `POST /platform/users/{id}/disable`, `GET /platform/course-support-demand`                                                              | `platform_admin`; no course-content capability; demand is counts only                    |
-| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                                        | Database visibility or enrollment; lecture unlock server-side                            |
-| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, practice exams, private PPI imports, learner reset, workspace assets | Current session user plus active course enrollment; no learner ID accepted               |
-| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion                    | Operator-granted or retained professor role; exact `courses.owner_user_id` thereafter    |
-| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                                          | Course access, publication/unlock policy, confined path                                  |
+| Class                       | Routes                                                                                                               | Required object check                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Public                      | `GET /health`, `POST /auth/login`, register/verify/password-reset routes                                             | Rate-limited; submitted credentials are never logged or returned                         |
+| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`, `GET\|PUT\|DELETE /me/course-support-requests`              | Current opaque session; course requests need a student and an own Alma/ILIAS observation |
+| Platform administration     | `POST /platform/users/{id}/disable`, `GET /platform/course-support-demand`                                           | `platform_admin`; no course-content capability; demand is counts only                    |
+| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                     | Database visibility or enrollment; lecture unlock server-side                            |
+| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, practice exams, learner reset, workspace assets   | Current session user plus active course enrollment; no learner ID accepted               |
+| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion | Operator-granted or retained professor role; exact `courses.owner_user_id` thereafter    |
+| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                       | Course access, publication/unlock policy, confined path                                  |
 
 The learner-only class includes:
 
@@ -44,10 +44,6 @@ The learner-only class includes:
 - `POST /courses/{course}/lectures/{lecture}/analytics/quiz-answer`
 - `GET /courses/{course}/exam-readiness`
 - `POST /courses/{course}/exam-readiness/attempts`
-- `GET /courses/{course}/ppi-exam-sources`
-- `POST /courses/{course}/ppi-exam-sources/catalog`
-- `POST /courses/{course}/ppi-exam-sources/imports`
-- `DELETE /courses/{course}/ppi-exam-sources/{source}`
 - `POST /courses/{course}/practice-exam-generations`
 - `GET /courses/{course}/practice-exam-generations/status`
 - `GET|DELETE /courses/{course}/practice-exams/{exam}`
@@ -95,8 +91,7 @@ the authentication migration revokes every session created before the change.
   timing. Professor preview produces no learner outcome event, and aggregates remain hidden below
   five unique learners.
 - Public and pre-attempt DTOs omit storage paths, staff identity, readiness answers, and rubrics.
-- Practice-exam DTOs and PDFs omit answer keys, rubrics, course-source IDs, and PPI-source IDs.
-- PPI credentials, cookies, raw protocol text, and model prompts are not logged or persisted in
-  database events. Retained protocol material is scoped to the current learner's hashed course root.
+- Practice-exam DTOs and PDFs omit answer keys, rubrics, and course-source IDs.
+- Model prompts are not logged or persisted in database events.
 - Cookie-authenticated mutations outside the public authentication routes require the session CSRF token, an allowed Origin, and valid
   Fetch Metadata.

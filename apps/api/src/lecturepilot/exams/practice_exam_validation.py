@@ -7,9 +7,6 @@ from lecturepilot.exams.practice_exam_options import has_equivalent_numeric_opti
 from lecturepilot.core.evidence_quote_validation import substantive_quote
 
 
-_COPY_WINDOW = 60
-
-
 class PracticeExamValidationError(ValueError):
     """Raised when a generated exam violates the authoritative-source contract."""
 
@@ -23,8 +20,6 @@ def validate_practice_exam(
     *,
     authoritative_source_ids: set[str],
     question_count: int,
-    selected_ppi_source_ids: set[str] | None = None,
-    ppi_texts: list[str] | None = None,
     choice_format: str = "single_answer",
 ) -> None:
     if len(exam.questions) != question_count:
@@ -45,11 +40,10 @@ def validate_practice_exam(
         raise PracticeExamValidationError(
             "Practice exams must mix multiple-choice and open-ended questions."
         )
-    selected_ppi = selected_ppi_source_ids or set()
     failures: dict[str, str] = {}
     for question in exam.questions:
         try:
-            _validate_question(question, authoritative_source_ids, selected_ppi)
+            _validate_question(question, authoritative_source_ids)
         except PracticeExamValidationError as exc:
             failures[question.id] = str(exc)
     if failures:
@@ -68,14 +62,9 @@ def validate_practice_exam(
         raise PracticeExamValidationError(
             "Practice exam source ids must exactly match the cited course sources."
         )
-    if set(exam.ppi_source_ids) != selected_ppi:
-        raise PracticeExamValidationError(
-            "Practice exam PPI source ids must match the selected retained sources."
-        )
-    _reject_protocol_copy(exam, ppi_texts or [])
 
 
-def _validate_question(question, authoritative_source_ids, selected_ppi) -> None:
+def _validate_question(question, authoritative_source_ids) -> None:
     if question.status != "active":
         raise PracticeExamValidationError(f"Generated question {question.id} must be active.")
     course_sources = set(question.source_ids)
@@ -83,8 +72,6 @@ def _validate_question(question, authoritative_source_ids, selected_ppi) -> None
         raise PracticeExamValidationError(
             f"Question {question.id} must cite at least one known course source."
         )
-    if not set(question.ppi_pattern_ids).issubset(selected_ppi):
-        raise PracticeExamValidationError(f"Question {question.id} cites an unselected PPI source.")
     if question.kind in {"multiple_choice", "multiple_select"}:
         _reject_equivalent_options(question.id, question.options)
         options = [_normalized(option) for option in question.options]
@@ -218,21 +205,6 @@ def _reject_equivalent_options(question_id: str, options: list[str]) -> None:
         raise PracticeExamValidationError(
             f"Question {question_id} has numerically equivalent options."
         )
-
-
-def _reject_protocol_copy(exam: PracticeExam, protocol_texts: list[str]) -> None:
-    candidate = _normalized(
-        " ".join(
-            value for question in exam.questions for value in [question.prompt, *question.options]
-        )
-    )
-    for protocol in protocol_texts:
-        normalized = _normalized(protocol)
-        for start in range(0, max(0, len(normalized) - _COPY_WINDOW + 1), 20):
-            if normalized[start : start + _COPY_WINDOW] in candidate:
-                raise PracticeExamValidationError(
-                    "Generated question copies retained PPI text too closely."
-                )
 
 
 def _normalized(value: str) -> str:
