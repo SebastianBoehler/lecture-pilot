@@ -158,8 +158,9 @@ needs internet access. Audio stays local and the transcript remains editable
 until Send. See [browser dictation](docs/browser-dictation.md).
 
 TeX-only previews also require the isolated compiler described in
-[the LaTeX guide](docs/latex-compilation.md). Live University of Tübingen login
-requires the optional integration:
+[the LaTeX guide](docs/latex-compilation.md). Independent accounts use verified university email and a separate LecturePilot password;
+see [account setup](docs/local-accounts.md). Public Alma course search and optional PPI import
+use the integration package:
 
 ```bash
 pip install -e "apps/api[tuebingen]"

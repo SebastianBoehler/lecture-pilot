@@ -73,9 +73,9 @@ python -m lecturepilot.production_preflight --env-file .env.production
 Production forces database session auth, schema verification, trusted Host and Origin lists, HSTS,
 `Secure`/`HttpOnly`/`SameSite=Lax` session cookies, bounded material processing, quotas, and the
 persisted `/app/storage` root. Production startup rejects insecure cookie overrides, missing or
-non-HTTPS origins, wildcard hosts, and non-PostgreSQL databases. Provider and university credentials
-stay server-side. Alma is the only account login path, and production web builds omit both
-development demo-login buttons.
+non-HTTPS origins, wildcard hosts, and non-PostgreSQL databases. Provider credentials stay server-side. Accounts use verified university email and a separate
+LecturePilot password; [SMTP setup and migration](local-accounts.md) are required.
+Production web builds omit both development demo-login buttons.
 
 Plain-HTTP local development deliberately leaves the `Secure` cookie flag off because browsers would
 otherwise reject the session. The production Compose path has no such override: Caddy obtains and

@@ -16,7 +16,7 @@ browser
 ```
 
 Only Caddy publishes ports 80 and 443. Postgres, the API, web container, and
-compiler remain on Compose networks. Provider and university credentials exist
+compiler remain on Compose networks. Provider credentials exist
 only in the API environment; the compiler receives no secrets and has no
 external network.
 

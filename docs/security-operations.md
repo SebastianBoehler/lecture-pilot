@@ -35,15 +35,13 @@ Do not overwrite a live volume until the rehearsal and integrity checks pass.
 ## Account and session response
 
 - Disabling an account uses `POST /platform/users/{user_id}/disable` and revokes its sessions.
-- Alma verifies identity and course evidence during login and synchronization. Tutor and canvas
-  requests thereafter authenticate against the independent LecturePilot session; an upstream Alma
-  client expiring does not terminate that learning session.
+- Accounts use verified university email and separate passwords. No ZDV credential login or
+  Alma/ILIAS session is created. See [account operations](local-accounts.md).
 - Authenticated activity renews a valid LecturePilot session once half of its configured lifetime
-  remains. A separate absolute lifetime requires fresh university authentication at its configured
+  remains. A separate absolute lifetime requires fresh LecturePilot authentication at its configured
   limit, which defaults to one day; expired or revoked sessions are never revived.
-- The active server-reported Alma role determines student/professor access on each synchronized
-  identity snapshot. A role change takes effect through a new university login; disabling the
-  LecturePilot account remains the immediate local revocation path.
+- New verified accounts are students. Operators grant professor or administrator access;
+  recovered legacy accounts retain their recorded roles. Disabling an account revokes its sessions.
 - A suspected session theft requires account disablement or direct session revocation, review of
   `audit_events`, and rotation of any exposed session/provider/database secret.
 - Provider keys and the database password live only in the deployment secret source, never Compose,

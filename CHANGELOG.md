@@ -12,6 +12,7 @@ Course creation now uses bounded generation steps, preserves saved work, and sho
 
 ### What changed
 
+- **Independent LecturePilot accounts** — Create an account with your verified university email and a separate LecturePilot password. ZDV credential login and automatic Alma/ILIAS synchronization have been removed. Existing accounts can retain their course access; new students use lecturer-issued join links.
 - **Bounded generation with review notes** _(From feedback)_ — Learning goals, teaching tasks and lecture sections use fixed generation steps with targeted repairs. Remaining model review findings appear as warnings; structural checks still protect the draft.
 - **Draft and publish lectures independently** _(From feedback)_ — Draft generation starts when a lecture’s learning goals are approved. Approved drafts can be published while other lectures are still being prepared. Interrupted generation shows a resume action.
 - **Share courses with links and QR codes** — Share the course link, QR code or slide image. Enrollment remains required unless the lecturer explicitly enables a revocable join link.
@@ -23,6 +24,7 @@ Course creation now uses bounded generation steps, preserves saved work, and sho
 
 Die Kurserstellung nutzt begrenzte Generierungsschritte, erhält gespeicherte Arbeit und zeigt Prüfhinweise für die Entscheidung der Lehrenden. Kurslinks erleichtern das Teilen.
 
+- **Eigene LecturePilot-Konten** — Erstelle ein Konto mit bestätigter Uni-E-Mail und einem eigenen LecturePilot-Passwort. ZDV-Passwortanmeldung und automatische Alma/ILIAS-Synchronisierung wurden entfernt. Bestehende Konten können ihren Kurszugang behalten; neue Studierende nutzen Beitrittslinks der Lehrenden.
 - **Begrenzte Generierung mit Prüfhinweisen** _(Aus Feedback)_ — Lernziele, Übungsaufgaben und Vorlesungsabschnitte entstehen in festen Schritten mit gezielten Reparaturen. Verbleibende Modellhinweise erscheinen als Warnungen; strukturelle Prüfungen schützen weiterhin den Entwurf.
 - **Vorlesungen einzeln erstellen und veröffentlichen** _(Aus Feedback)_ — Die Entwurfserstellung startet nach der Freigabe der Lernziele einer Vorlesung. Freigegebene Entwürfe können veröffentlicht werden, während andere Vorlesungen noch entstehen. Unterbrochene Generierungen zeigen eine Aktion zum Fortsetzen.
 - **Kurse mit Links und QR-Codes teilen** — Kurslink, QR-Code oder Folienbild teilen. Die Einschreibung bleibt erforderlich, sofern die Lehrperson nicht ausdrücklich einen widerrufbaren Beitrittslink aktiviert.

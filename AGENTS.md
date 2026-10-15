@@ -13,7 +13,7 @@ material.
 Core flow:
 
 ```txt
-student login -> enrolled courses -> past lectures only -> attendance mode
+verified email login -> enrolled courses -> past lectures only -> attendance mode
 -> filesystem-backed canvas -> guided tutor turn -> persisted learner overlay
 ```
 
@@ -35,7 +35,10 @@ pip install -e "apps/api[test,agent]"
 cp .env.local.example .env.local
 ```
 
-Add Uni Tuebingen wrapper support only when working on live university login.
+Account registration requires verified university email and a separate LecturePilot password.
+See `docs/local-accounts.md` for SMTP, recovery and role administration. Never receive ZDV
+credentials or reintroduce university-session scraping. The optional wrapper supports public
+Alma search and separate PPI accounts only.
 
 ```bash
 pip install -e "apps/api[tuebingen]"
@@ -189,7 +192,7 @@ canvas/              canvas Markdown/models/store, annotations, predictions, lan
 core/                shared API models, storage layout, durable files, audit, observability
 courses/             course access, schedules, updates, sharing, university courses
 exams/               exam readiness, practice exams, PPI exam sources
-identity/            auth, sessions, CSRF, tenancy, accounts, Tuebingen adapter
+identity/            auth, verified email accounts, SMTP, sessions, CSRF, tenancy
 learner/             gates, coaching, assessments, review queue, profile and memory
 learning_design/     learning intent, goals, practice and teaching design, learning maps
 llm/                 model clients, provider routing, image generation, usage quotas

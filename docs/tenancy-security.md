@@ -8,31 +8,30 @@ authentication.
 
 | Principal              | Authority                                                                           |
 | ---------------------- | ----------------------------------------------------------------------------------- |
-| Public                 | Health/readiness checks and university login                                        |
+| Public                 | Health/readiness checks and verified email accounts                                 |
 | Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset   |
-| Alma professor         | May create a course; gains no tenant-wide content access                            |
+| Verified professor     | May create a course; gains no tenant-wide content access                            |
 | Course owner           | Manages only the course whose `owner_user_id` matches the session user              |
 | Platform administrator | May disable accounts and view aggregate course demand; no course or learner content |
 
 Tutor and co-instructor delegation is not implemented. Platform course search and join requests are
 also deferred.
 
-University identities come only from the server-side adapter. The active Alma `student` role maps to
-a student account; any other active Alma role maps directly to a professor account. LecturePilot
-stores the active and available server-reported roles for audit, but never accepts a role from the
-browser.
+New accounts require university email verification and begin as students. Professor and
+administrator roles require an operator grant; a recovered legacy identity retains its role.
+No account receives an Alma or ILIAS session. See [account setup](local-accounts.md).
 Production web builds do not render either development demo login.
 
 ## Route inventory
 
 | Class                       | Routes                                                                                                                                  | Required object check                                                                    |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`                                                                                                       | Rate-limited; submitted credentials are never logged or returned                         |
+| Public                      | `GET /health`, `POST /auth/login`, register/verify/password-reset routes                                                                | Rate-limited; submitted credentials are never logged or returned                         |
 | Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`, `GET\|PUT\|DELETE /me/course-support-requests`                                 | Current opaque session; course requests need a student and an own Alma/ILIAS observation |
 | Platform administration     | `POST /platform/users/{id}/disable`, `GET /platform/course-support-demand`                                                              | `platform_admin`; no course-content capability; demand is counts only                    |
 | Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                                        | Database visibility or enrollment; lecture unlock server-side                            |
 | Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, practice exams, private PPI imports, learner reset, workspace assets | Current session user plus active course enrollment; no learner ID accepted               |
-| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion                    | Verified non-student Alma role; exact `courses.owner_user_id` thereafter                 |
+| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion                    | Operator-granted or retained professor role; exact `courses.owner_user_id` thereafter    |
 | Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                                          | Course access, publication/unlock policy, confined path                                  |
 
 The learner-only class includes:
@@ -70,32 +69,20 @@ Learning-design reports and their acknowledgements are private course-builder st
 the exact report revision and diagnostic ID set to the current draft, source, and learning-map
 revisions; publication revalidates that binding and never copies the report to learner content.
 
-## University matching
+## Existing enrollments and sessions
 
-LecturePilot cannot enumerate an Alma or ILIAS catalog. A professor creates a platform course using
-title and term. On student login, only that student's own upstream memberships are considered.
+Historical Alma/ILIAS records remain as saved access evidence. Login no longer fetches
+university memberships or changes saved enrollments. New students use lecturer-issued
+join links. Public Alma search remains available without university authentication.
 
-1. Treat Alma timetable titles as term-scoped evidence with a deterministic title key; require a
-   stable course/ref ID for ILIAS memberships.
-2. Reuse an existing `(tenant, source, external_course_id, term)` binding when present.
-3. Otherwise compare normalized exact title and exact term with active platform courses.
-4. Bind and enroll only when exactly one course matches. Zero or multiple matches grant nothing.
-5. ILIAS bindings remain authoritative across title changes. Alma remains exact-name-and-term based
-   because its lightweight timetable does not expose an immutable course ID.
+Email verification reclaims exactly one existing account with a matching university
+email, preserving its ID, role and private workspace. Ambiguous matches fail explicitly.
+Disabled accounts remain inaccessible. New accounts receive no historical memberships.
 
-Authentication verifies the active Alma role before issuing a session. Previous Alma/ILIAS-derived
-enrollments are deactivated at that boundary; Alma timetable and ILIAS data then synchronize in
-parallel, and only the current sync attempt may restore matched course access. Each source commits
-its own result as soon as it completes, so an unavailable source does not suppress suggestions from
-the other one. The dashboard polls `GET /me` while this work is in progress, exposes the independent
-source statuses, and does not treat browser course data as authority.
-
-After login, canvas and tutor requests use the opaque LecturePilot database session rather than a
-live Alma client or upstream token. A valid cookie session is renewed once half of its configured
-lifetime remains, so continued authenticated learning activity can extend it without repeating the
-university login during a study day. A separate absolute lifetime bounds stale authorization and
-requires fresh university authentication at its configured limit, one day by default. An already
-expired, revoked, or disabled-account session remains rejected.
+Opaque cookie sessions renew after half their idle lifetime has elapsed. Their absolute
+lifetime still requires a fresh LecturePilot login, one day by default. Expired, revoked
+and disabled-account sessions remain rejected. Password reset revokes all user sessions;
+the authentication migration revokes every session created before the change.
 
 ## Denial rules
 
@@ -111,5 +98,5 @@ expired, revoked, or disabled-account session remains rejected.
 - Practice-exam DTOs and PDFs omit answer keys, rubrics, course-source IDs, and PPI-source IDs.
 - PPI credentials, cookies, raw protocol text, and model prompts are not logged or persisted in
   database events. Retained protocol material is scoped to the current learner's hashed course root.
-- Every cookie-authenticated mutation requires the session CSRF token, an allowed Origin, and valid
+- Cookie-authenticated mutations outside the public authentication routes require the session CSRF token, an allowed Origin, and valid
   Fetch Metadata.

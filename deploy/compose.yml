@@ -10,6 +10,7 @@ x-api-environment: &api-environment
   DATABASE_URL: postgresql://lecturepilot:${LECTUREPILOT_POSTGRES_PASSWORD:?Set a strong database password}@db:5432/lecturepilot
   LECTUREPILOT_ENV: production
   LECTUREPILOT_AUTH_MODE: session
+  LECTUREPILOT_PUBLIC_URL: https://${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
   LECTUREPILOT_ALLOWED_ORIGINS: https://${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
   LECTUREPILOT_ALLOWED_HOSTS: ${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
   LECTUREPILOT_SESSION_COOKIE_SECURE: "true"
