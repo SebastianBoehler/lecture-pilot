@@ -9,6 +9,12 @@ not mean every listed version is the version of record.
 Paper-by-paper access and content notes are in
 [2026-09-25-paper-content-and-access-notes.md](2026-09-25-paper-content-and-access-notes.md).
 
+Additional discovery resource: [SCALE research map review, 17 October 2026](2026-10-17-scale-research-map.md)
+records relevant filters, evidence limitations, and a LecturePilot follow-up method.
+
+[Seven-paper full-text comparison, 17 October 2026](2026-10-17-scale-lecturepilot-comparison.md)
+compares selected SCALE papers with current code and records prioritized gaps.
+
 ## 1. Learning, retrieval, spacing, and self-regulation
 
 - **Dunlosky, Rawson, Marsh, Nathan & Willingham (2013).** “Improving Students’
