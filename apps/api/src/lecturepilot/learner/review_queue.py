@@ -58,6 +58,8 @@ class ReviewQueueStore:
                     raise InvalidCoachingStateError(
                         "Persisted delayed review does not match the published learning map."
                     )
+                if not gate.has_delayed_review:
+                    continue
                 if review.section_id not in sections or review.section_id != gate.section_id:
                     raise InvalidCoachingStateError("Persisted delayed review section is invalid.")
                 completion = review.last_completed_at or review.completed_at

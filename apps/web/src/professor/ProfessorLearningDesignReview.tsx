@@ -98,39 +98,43 @@ export function ProfessorLearningDesignReview({
                       />
                     </label>
                   ))}
-                  <label>
-                    {t("builder.learningDesign.transfer")}
-                    <textarea
-                      value={gate.transfer_prompt}
-                      onChange={(event) =>
-                        setUpdate({
-                          ...update,
-                          gates: replaceAt(update.gates, gateIndex, {
-                            ...gate,
-                            transfer_prompt: event.target.value,
-                          }),
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    {t("builder.learningDesign.interval")}
-                    <input
-                      min="1"
-                      max="365"
-                      type="number"
-                      value={gate.review_after_days}
-                      onChange={(event) =>
-                        setUpdate({
-                          ...update,
-                          gates: replaceAt(update.gates, gateIndex, {
-                            ...gate,
-                            review_after_days: Number(event.target.value),
-                          }),
-                        })
-                      }
-                    />
-                  </label>
+                  {gate.transfer_prompt !== null ? (
+                    <>
+                      <label>
+                        {t("builder.learningDesign.transfer")}
+                        <textarea
+                          value={gate.transfer_prompt}
+                          onChange={(event) =>
+                            setUpdate({
+                              ...update,
+                              gates: replaceAt(update.gates, gateIndex, {
+                                ...gate,
+                                transfer_prompt: event.target.value,
+                              }),
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        {t("builder.learningDesign.interval")}
+                        <input
+                          min="1"
+                          max="365"
+                          type="number"
+                          value={gate.review_after_days}
+                          onChange={(event) =>
+                            setUpdate({
+                              ...update,
+                              gates: replaceAt(update.gates, gateIndex, {
+                                ...gate,
+                                review_after_days: Number(event.target.value),
+                              }),
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  ) : null}
                 </fieldset>
               </details>
             ))}
@@ -219,7 +223,7 @@ function editableReview(review: LearningDesignReview): LearningDesignUpdate {
       id: gate.id,
       prompt: gate.prompt,
       evidence_criteria: gate.evidence_criteria,
-      transfer_prompt: gate.transfer_prompt,
+      transfer_prompt: gate.practice_target_id ? gate.transfer_prompt : null,
       review_after_days: gate.review_after_days,
     })),
     prerequisites: review.learning_map.nodes.map((node) => ({

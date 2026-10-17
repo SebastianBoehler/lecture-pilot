@@ -382,6 +382,11 @@ professor/ profile/ shared/ shell/ speech/ test/
 
 ## Learning Evidence And Teaching Languages
 
+- Delayed reviews require a reviewed practice target with an explicit changed task.
+  Generic checkpoints remain immediate practice; never synthesize transfer prompts
+  by prefixing their question. `storage_migration_generic_reviews.py` retires old
+  generic delayed state without rewriting publications or attempt history.
+
 - Prediction cards save a private first guess or skip, bound to the published
   block digest and revision. They never pass gates or enter professor analytics.
   New authoring may include at most one per lecture; professor preview is read-only.

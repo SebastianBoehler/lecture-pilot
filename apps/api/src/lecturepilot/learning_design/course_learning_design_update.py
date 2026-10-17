@@ -22,6 +22,8 @@ def apply_learning_design_update(
     payload["objective"] = update.objective
     for gate in payload["gates"]:
         changed = gate_inputs[gate["id"]]
+        if gate["practice_target_id"] is None and changed.transfer_prompt is not None:
+            raise ValueError("Delayed reviews require a reviewed practice target.")
         current_criterion_ids = [item["id"] for item in gate["evidence_criteria"]]
         changed_criterion_ids = [item.id for item in changed.evidence_criteria]
         if len(set(changed_criterion_ids)) != len(changed_criterion_ids) or set(

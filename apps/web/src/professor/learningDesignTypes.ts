@@ -12,7 +12,8 @@ type LearningDesignGate = {
   title: string;
   prompt: string;
   evidence_criteria: LearningDesignEvidenceCriterion[];
-  transfer_prompt: string;
+  transfer_prompt: string | null;
+  practice_target_id?: string | null;
   review_after_days: number;
   revision: string;
   section_id: string;

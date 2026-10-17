@@ -4,6 +4,11 @@ The learner canvas shows supported, independent and delayed evidence separately.
 These are records of attempts within LecturePilot, not a general mastery score or
 proof of learning outside the app.
 
+Delayed reviews use only reviewed practice targets with explicit changed tasks.
+Generic canvas checkpoints remain immediate practice and have no delayed task.
+The one-time `generic-checkpoint-reviews` migration retires their old queued and
+pending delayed checks, preserving publications, immediate evidence and history.
+
 ## Learner review dates
 
 Each published gate has an approved `review_after_days`. After a learner passes its

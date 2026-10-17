@@ -18,26 +18,28 @@ def test_open_rejects_locked_stale_and_wrong_gate_targets(tmp_path: Path) -> Non
     client = _client(tmp_path)
     user_id = "student-a"
     headers = student_headers(user_id, course_ids=[COURSE_ID])
-    _write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=1))
-    _write_review(client, user_id, "lecture-locked", "gate-locked", NOW - timedelta(days=1))
+    _write_review(client, user_id, "lecture-a", "practice-gate-a", NOW - timedelta(days=1))
+    _write_review(
+        client, user_id, "lecture-locked", "practice-gate-locked", NOW - timedelta(days=1)
+    )
     progress = _read_progress(client, user_id, "lecture-a")
-    current_revision = _gate_revision(client, "lecture-a", "gate-a")
-    key = review_key("gate-a", current_revision)
+    current_revision = _gate_revision(client, "lecture-a", "practice-gate-a")
+    key = review_key("practice-gate-a", current_revision)
     progress.delayed_reviews[key] = progress.delayed_reviews[key].model_copy(
         update={"gate_revision": "stale-revision"}
     )
     _write_progress(client, user_id, "lecture-a", progress)
 
     stale = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open",
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-a/open",
         headers=headers,
     )
     wrong = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-b/open",
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-b/open",
         headers=headers,
     )
     locked = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-locked/gate-locked/open",
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-locked/practice-gate-locked/open",
         headers=headers,
     )
     unpublished_response = client.post(

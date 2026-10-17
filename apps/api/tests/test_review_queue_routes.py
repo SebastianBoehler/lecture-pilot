@@ -24,9 +24,9 @@ from review_queue_test_helpers import (
 def test_review_queue_orders_due_gates_then_repairs_without_answer_text(tmp_path: Path) -> None:
     client = _client(tmp_path)
     user_id = "student-a"
-    _write_review(client, user_id, "lecture-b", "gate-b", NOW - timedelta(days=2))
-    _write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=1))
-    _write_review(client, user_id, "lecture-a", "gate-c", NOW - timedelta(days=1))
+    _write_review(client, user_id, "lecture-b", "practice-gate-b", NOW - timedelta(days=2))
+    _write_review(client, user_id, "lecture-a", "practice-gate-a", NOW - timedelta(days=1))
+    _write_review(client, user_id, "lecture-a", "practice-gate-c", NOW - timedelta(days=1))
     _write_readiness_task(client, user_id)
 
     response = client.get(
@@ -37,9 +37,9 @@ def test_review_queue_orders_due_gates_then_repairs_without_answer_text(tmp_path
     assert response.status_code == 200
     payload = response.json()
     assert [(item["kind"], item["id"]) for item in payload["items"]] == [
-        ("gate_review", "gate:lecture-b:gate-b"),
-        ("gate_review", "gate:lecture-a:gate-a"),
-        ("gate_review", "gate:lecture-a:gate-c"),
+        ("gate_review", "gate:lecture-b:practice-gate-b"),
+        ("gate_review", "gate:lecture-a:practice-gate-a"),
+        ("gate_review", "gate:lecture-a:practice-gate-c"),
         ("readiness_repair", "readiness:repair-risk"),
     ]
     serialized = response.text
@@ -51,8 +51,8 @@ def test_review_queue_orders_due_gates_then_repairs_without_answer_text(tmp_path
 
 def test_review_queue_is_user_course_and_access_isolated(tmp_path: Path) -> None:
     client = _client(tmp_path)
-    _write_review(client, "student-a", "lecture-a", "gate-a", NOW - timedelta(days=1))
-    _write_review(client, "student-a", "lecture-a", "gate-c", NOW + timedelta(days=2))
+    _write_review(client, "student-a", "lecture-a", "practice-gate-a", NOW - timedelta(days=1))
+    _write_review(client, "student-a", "lecture-a", "practice-gate-c", NOW + timedelta(days=2))
     _write_readiness_task(client, "student-a", course_id="other-course")
     url = f"/courses/{COURSE_ID}/review-queue"
 
@@ -70,7 +70,7 @@ def test_review_queue_is_user_course_and_access_isolated(tmp_path: Path) -> None
 
     assert own.status_code == 200
     assert len(own.json()["items"]) == 1
-    assert [item["gate_id"] for item in own.json()["upcoming"]] == ["gate-c"]
+    assert [item["gate_id"] for item in own.json()["upcoming"]] == ["practice-gate-c"]
     assert other.status_code == 200
     assert other.json()["items"] == []
     assert other.json()["upcoming"] == []
@@ -82,26 +82,26 @@ def test_review_queue_is_user_course_and_access_isolated(tmp_path: Path) -> None
 def test_review_queue_shows_next_seven_days_without_opening_early(tmp_path: Path) -> None:
     client = _client(tmp_path)
     user_id = "student-a"
-    _write_review(client, user_id, "lecture-a", "gate-a", NOW + timedelta(days=2))
-    _write_review(client, user_id, "lecture-a", "gate-c", NOW + timedelta(days=9))
-    _write_review(client, user_id, "lecture-b", "gate-b", NOW - timedelta(days=1))
+    _write_review(client, user_id, "lecture-a", "practice-gate-a", NOW + timedelta(days=2))
+    _write_review(client, user_id, "lecture-a", "practice-gate-c", NOW + timedelta(days=9))
+    _write_review(client, user_id, "lecture-b", "practice-gate-b", NOW - timedelta(days=1))
     headers = student_headers(user_id, course_ids=[COURSE_ID])
 
     response = client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers)
 
     assert response.status_code == 200
     payload = response.json()
-    assert [item["gate_id"] for item in payload["items"]] == ["gate-b"]
-    assert [item["gate_id"] for item in payload["upcoming"]] == ["gate-a"]
+    assert [item["gate_id"] for item in payload["items"]] == ["practice-gate-b"]
+    assert [item["gate_id"] for item in payload["upcoming"]] == ["practice-gate-a"]
     assert payload["upcoming"][0]["due_at"] == (NOW + timedelta(days=2)).isoformat()
     assert "Apply A to an unfamiliar case." not in response.text
     early = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open",
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-a/open",
         headers=headers,
     )
     assert early.status_code == 409
     progress = _read_progress(client, user_id, "lecture-a")
-    key = review_key("gate-a", _gate_revision(client, "lecture-a", "gate-a"))
+    key = review_key("practice-gate-a", _gate_revision(client, "lecture-a", "practice-gate-a"))
     progress.delayed_reviews[key] = progress.delayed_reviews[key].model_copy(
         update={"completed_at": NOW}
     )
@@ -115,10 +115,10 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
     client = _client(tmp_path)
     user_id = "student-a"
     due_at = NOW - timedelta(days=1)
-    _write_review(client, user_id, "lecture-a", "gate-a", due_at)
+    _write_review(client, user_id, "lecture-a", "practice-gate-a", due_at)
 
     response = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open",
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-a/open",
         headers=student_headers(user_id, course_ids=[COURSE_ID]),
     )
 
@@ -127,8 +127,8 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
         "course_id": COURSE_ID,
         "lecture_id": "lecture-a",
         "section_id": "section-a",
-        "gate_id": "gate-a",
-        "gate_revision": _gate_revision(client, "lecture-a", "gate-a"),
+        "gate_id": "practice-gate-a",
+        "gate_revision": _gate_revision(client, "lecture-a", "practice-gate-a"),
         "prompt": "Apply A to an unfamiliar case.",
         "stage": "due",
     }
@@ -137,7 +137,7 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
     assert progress.pending_check.prompt == "Apply A to an unfamiliar case."
     assert progress.pending_check.assistance_level == "none"
     assert progress.pending_check.kind == "delayed_transfer"
-    key = review_key("gate-a", _gate_revision(client, "lecture-a", "gate-a"))
+    key = review_key("practice-gate-a", _gate_revision(client, "lecture-a", "practice-gate-a"))
     assert progress.delayed_reviews[key].attempted_at is None
     assert progress.delayed_reviews[key].completed_at is None
 
@@ -147,24 +147,24 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
 ) -> None:
     client = _client(tmp_path)
     user_id = "student-a"
-    _write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=2))
-    _write_review(client, user_id, "lecture-b", "gate-b", NOW - timedelta(days=1))
+    _write_review(client, user_id, "lecture-a", "practice-gate-a", NOW - timedelta(days=2))
+    _write_review(client, user_id, "lecture-b", "practice-gate-b", NOW - timedelta(days=1))
     _write_readiness_task(client, user_id)
     headers = student_headers(user_id, course_ids=[COURSE_ID])
-    open_url = f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open"
+    open_url = f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-a/open"
     assert client.post(open_url, headers=headers).status_code == 200
     store = CoachingProgressStore(client.app.state.canvas_workspace.layout)
-    revision = _gate_revision(client, "lecture-a", "gate-a")
+    revision = _gate_revision(client, "lecture-a", "practice-gate-a")
     learning_map = client.app.state.canvas_workspace.course_canvas_store.learning_map(
         course_id=COURSE_ID, lecture_id="lecture-a"
     )
     assert learning_map is not None
-    gate = next(item for item in learning_map.gates if item.id == "gate-a")
+    gate = next(item for item in learning_map.gates if item.id == "practice-gate-a")
     context = store.context(
         user_id=user_id,
         course_id=COURSE_ID,
         lecture_id="lecture-a",
-        gate_id="gate-a",
+        gate_id="practice-gate-a",
         gate_revision=revision,
         learning_objective="Explain and apply gate A.",
         now=NOW,
@@ -183,15 +183,15 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         context=context,
         policy=policy,
         decision=QualityGateDecision(
-            gate_id="gate-a",
+            gate_id="practice-gate-a",
             gate_revision=revision,
             status=QualityGateStatus.NEEDS_EVIDENCE,
             reason="Apply the mechanism, not the memorized wording.",
             evidence_ids=[],
-            missing_evidence_ids=["gate-a"],
+            missing_evidence_ids=["practice-gate-a"],
         ),
         next_check=NextCheck(
-            gate_id="gate-a",
+            gate_id="practice-gate-a",
             gate_revision=revision,
             prompt="Apply A to an unfamiliar case.",
             assistance=NextCheckAssistance(level="none", content=None),
@@ -207,8 +207,8 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         headers=headers,
     ).json()["items"]
     assert [(item["kind"], item["id"]) for item in failed_queue] == [
-        ("gate_review", "gate:lecture-b:gate-b"),
-        ("gate_repair", "gate-repair:lecture-a:gate-a"),
+        ("gate_review", "gate:lecture-b:practice-gate-b"),
+        ("gate_repair", "gate-repair:lecture-a:practice-gate-a"),
         ("readiness_repair", "readiness:repair-risk"),
     ]
     repair_opening = client.post(open_url, headers=headers)
@@ -220,7 +220,7 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         user_id=user_id,
         course_id=COURSE_ID,
         lecture_id="lecture-a",
-        gate_id="gate-a",
+        gate_id="practice-gate-a",
         gate_revision=revision,
         learning_objective="Explain and apply gate A.",
         now=NOW + timedelta(minutes=4),
@@ -232,15 +232,15 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         context=repair_context,
         policy=policy,
         decision=QualityGateDecision(
-            gate_id="gate-a",
+            gate_id="practice-gate-a",
             gate_revision=revision,
             status=QualityGateStatus.PASSED,
             reason="The changed case is explained.",
-            evidence_ids=["gate-a"],
+            evidence_ids=["practice-gate-a"],
             missing_evidence_ids=[],
         ),
         next_check=NextCheck(
-            gate_id="gate-a",
+            gate_id="practice-gate-a",
             gate_revision=revision,
             prompt="Apply A to an unfamiliar case.",
             assistance=NextCheckAssistance(level="none", content=None),
@@ -251,7 +251,7 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         now=NOW + timedelta(minutes=5),
     )
     after_support = _read_progress(client, user_id, "lecture-a")
-    key = review_key("gate-a", revision)
+    key = review_key("practice-gate-a", revision)
     assert after_support.delayed_reviews[key].completed_at is None
     assert after_support.pending_check is not None
     assert after_support.pending_check.stage == "delayed_support"
@@ -265,7 +265,7 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         headers=headers,
     ).json()["items"]
     assert [item["id"] for item in final_items] == [
-        "gate:lecture-b:gate-b",
-        "gate-repair:lecture-a:gate-a",
+        "gate:lecture-b:practice-gate-b",
+        "gate-repair:lecture-a:practice-gate-a",
         "readiness:repair-risk",
     ]

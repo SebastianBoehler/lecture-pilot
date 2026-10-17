@@ -12,7 +12,9 @@ from lecturepilot.learner.coaching_progress import CoachingProgressStore
 from lecturepilot.learner.coaching_state_models import CoachingProgress, DelayedReview, review_key
 from lecturepilot.courses.course_schedule_store import write_course_workspace
 from lecturepilot.learning_design.course_learning_design_store import CourseLearningDesignStore
-from lecturepilot.learning_design.course_learning_design_models import LearningDesignUpdate
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from approved_practice_design_helpers import revised_design, store_design
+from practice_design_test_helpers import target
 from lecturepilot.core.durable_files import atomic_write_json
 from lecturepilot.exams.exam_revision_plan import ExamRevisionTask
 from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
@@ -72,42 +74,42 @@ def review_client(
                 "blocks": blocks,
             }
         )
-        write_canvas_draft(
+        document = write_canvas_draft(
             app.state.canvas_workspace,
             document,
             delayed_transfer_task=(delayed_transfer_prompt if lecture_id == "lecture-a" else None),
         )
-        reviews = CourseLearningDesignStore(app.state.canvas_workspace.layout)
-        review = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
-        changed = reviews.update(
-            course_id=COURSE_ID,
-            lecture_id=lecture_id,
-            update=LearningDesignUpdate(
-                draft_digest=review.draft_digest,
-                source_revision=review.source_revision,
-                practice_design_revision=review.practice_design_revision,
-                learning_map_revision=review.learning_map.revision,
-                objective=review.learning_map.objective,
-                gates=[
-                    {
-                        "id": gate.id,
-                        "prompt": gate.prompt,
-                        "evidence_criteria": gate.evidence_criteria,
-                        "transfer_prompt": (
-                            gate.transfer_prompt
-                            if gate.practice_target_id is not None
-                            else f"Apply {label} to an unfamiliar case."
-                        ),
-                        "review_after_days": gate.review_after_days,
-                    }
-                    for gate in review.learning_map.gates
-                ],
-                prerequisites=[
-                    {"section_id": node.section_id, "prerequisite_ids": node.prerequisites}
-                    for node in review.learning_map.nodes
-                ],
-            ),
+        layout = app.state.canvas_workspace.layout
+        design = PracticeDesignStore(layout).read(course_id=COURSE_ID, lecture_id=lecture_id)
+        targets = list(design.targets)
+        for block in document.sections[0].blocks:
+            if block.type != "checkpoint" or block.id.startswith("practice-"):
+                continue
+            targets.append(
+                target(
+                    id=block.id,
+                    source_refs=design.targets[0].source_refs,
+                    baseline_task=block.text,
+                    independent_exit_task=f"Explain {label} using a second example.",
+                    delayed_transfer_task=f"Apply {label} to an unfamiliar case.",
+                    evidence_criteria=[
+                        {
+                            "id": f"practice-{block.id}",
+                            "description": "Explain the mechanism and justify the conclusion.",
+                            "source_anchor": design.targets[0].baseline_task_anchor.model_dump(),
+                        }
+                    ],
+                    hint_ladder=[],
+                    review_after_days=2,
+                )
+            )
+            block.id = f"practice-{block.id}"
+        design = store_design(layout, revised_design(design, targets=targets))
+        app.state.canvas_workspace.write_course_canvas_draft(
+            document, expected_source_revision=design.source_revision, practice_design=design
         )
+        reviews = CourseLearningDesignStore(layout)
+        changed = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
         reviews.approve(
             course_id=COURSE_ID,
             lecture_id=lecture_id,

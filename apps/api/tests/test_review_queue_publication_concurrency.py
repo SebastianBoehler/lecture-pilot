@@ -4,8 +4,9 @@ from pathlib import Path
 from threading import Barrier
 
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import approve_canvas_draft, write_canvas_draft
-from lecturepilot.canvas.canvas_models import CanvasBlock
+from canvas_workspace_fixtures import approve_canvas_draft
+from approved_practice_design_helpers import revised_design, store_design
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,
@@ -14,7 +15,6 @@ from review_queue_test_helpers import (
     review_client,
     write_review,
 )
-from canvas_workspace_fixtures import published_course_canvas
 
 
 def test_review_open_racing_real_republish_binds_one_atomic_gate_revision(
@@ -23,27 +23,36 @@ def test_review_open_racing_real_republish_binds_one_atomic_gate_revision(
     client = review_client(tmp_path)
     user_id = "student-a"
     headers = student_headers(user_id, course_ids=[COURSE_ID])
-    write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=1))
-    old_revision = gate_revision(client, "lecture-a", "gate-a")
+    write_review(client, user_id, "lecture-a", "practice-gate-a", NOW - timedelta(days=1))
+    old_revision = gate_revision(client, "lecture-a", "practice-gate-a")
     workspace = client.app.state.canvas_workspace
-    replacement = published_course_canvas(COURSE_ID, "lecture-a")
-    replacement.sections[0] = replacement.sections[0].model_copy(
-        update={
-            "id": "section-a",
-            "title": "Section A republished",
-            "blocks": [
-                CanvasBlock(
-                    id="gate-a",
-                    type="checkpoint",
-                    text="Explain A under the republished contract.",
-                )
+    replacement = workspace.read_course_canvas_draft(
+        course_id=COURSE_ID, lecture_id="lecture-a"
+    ).model_copy(deep=True)
+    replacement.sections[0].title = "Section A republished"
+    new_prompt = "Explain A under the republished contract."
+    for block in replacement.sections[0].blocks:
+        if block.id == "practice-gate-a":
+            block.text = new_prompt
+    design = PracticeDesignStore(workspace.layout).read(course_id=COURSE_ID, lecture_id="lecture-a")
+    design = store_design(
+        workspace.layout,
+        revised_design(
+            design,
+            targets=[
+                item.model_copy(update={"baseline_task": new_prompt})
+                if item.id == "gate-a"
+                else item
+                for item in design.targets
             ],
-        }
+        ),
     )
-    write_canvas_draft(workspace, replacement)
+    workspace.write_course_canvas_draft(
+        replacement, expected_source_revision=design.source_revision, practice_design=design
+    )
     approve_canvas_draft(workspace, COURSE_ID, "lecture-a")
     start = Barrier(3)
-    open_url = f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open"
+    open_url = f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/practice-gate-a/open"
 
     def open_review():
         start.wait()
@@ -64,7 +73,7 @@ def test_review_open_racing_real_republish_binds_one_atomic_gate_revision(
         response = opening.result(timeout=5)
         publishing.result(timeout=5)
 
-    new_revision = gate_revision(client, "lecture-a", "gate-a")
+    new_revision = gate_revision(client, "lecture-a", "practice-gate-a")
     assert new_revision != old_revision
     assert response.status_code in {200, 409}
     pending = read_progress(client, user_id, "lecture-a").pending_check

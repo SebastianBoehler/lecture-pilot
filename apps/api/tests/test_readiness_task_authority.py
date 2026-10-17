@@ -132,7 +132,8 @@ def test_delayed_transfer_policy_survives_a_readiness_request(tmp_path):
     app = _published_app(tmp_path, checkpoint_prompt="Explain the cause and its effect.")
     gate = app.state.canvas_workspace.course_canvas_store.learning_map(
         course_id="martius-ml", lecture_id="lecture-01"
-    ).gates[0]
+    ).gates[-1]
+    assert gate.practice_target_id is not None
     _write_delayed_transfer(app, gate)
     _write_task(app, task_id="repair-risk")
     client = TestClient(app)

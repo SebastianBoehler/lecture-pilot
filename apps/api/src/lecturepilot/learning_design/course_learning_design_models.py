@@ -43,7 +43,7 @@ class LearningDesignGateInput(BaseModel):
     id: str = Field(min_length=1, max_length=160)
     prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
-    transfer_prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
+    transfer_prompt: str | None = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     review_after_days: int = Field(ge=1, le=365)
 
 

@@ -32,7 +32,7 @@ class _LearningMapGate(Protocol):
     prompt: str
     target_invariant: str | None
     evidence_criteria: list[_LearningMapCriterion]
-    transfer_prompt: str
+    transfer_prompt: str | None
     independent_exit_task: str | None
     independent_exit_surface_change: str | None
     delayed_transfer_surface_change: str | None

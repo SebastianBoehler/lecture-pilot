@@ -6,7 +6,7 @@ export type LearningMapGate = {
   title: string;
   prompt: string;
   evidence_criteria: Array<{ id: string; description: string; required: boolean }>;
-  transfer_prompt: string;
+  transfer_prompt: string | null;
   review_after_days: number;
   revision: string;
   section_id: string;

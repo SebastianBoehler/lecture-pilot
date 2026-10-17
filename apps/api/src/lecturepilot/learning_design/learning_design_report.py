@@ -63,7 +63,8 @@ def build_learning_design_report(
     gate_count = sum(bool(concept.gate_ids) for concept in concepts)
     quiz_count = sum(bool(concept.quiz_ids) for concept in concepts)
     assessed_count = sum(bool(concept.gate_ids or concept.quiz_ids) for concept in concepts)
-    transfer_count = sum(bool(gate.transfer_prompt.strip()) for gate in learning_map.gates)
+    review_gates = [gate for gate in learning_map.gates if gate.practice_target_id is not None]
+    transfer_count = sum(gate.has_delayed_review for gate in review_gates)
     return LearningDesignReport.create(
         schema_version=1,
         draft_digest=draft_digest,
@@ -79,7 +80,7 @@ def build_learning_design_report(
             gate_concepts=_coverage(gate_count, len(concepts)),
             quiz_concepts=_coverage(quiz_count, len(concepts)),
             source_backed_assessments=_coverage(source_backed_count, assessment_count),
-            transfer_prompts=_coverage(transfer_count, len(learning_map.gates)),
+            transfer_prompts=_coverage(transfer_count, len(review_gates)),
         ),
         concepts=concepts,
         diagnostics=diagnostics,

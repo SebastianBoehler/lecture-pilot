@@ -126,7 +126,7 @@ def _write_bound_coaching_state(app, gate, binding_kind: str) -> None:
             gate_id=gate.id,
             gate_revision=gate.revision,
             section_id=gate.section_id,
-            transfer_prompt=gate.transfer_prompt,
+            transfer_prompt="Apply the same reasoning to a changed case: " + gate.prompt,
             scheduled_at=issued_at,
             due_at=issued_at + timedelta(days=gate.review_after_days),
             planned_delay_seconds=gate.review_after_days * 24 * 60 * 60,

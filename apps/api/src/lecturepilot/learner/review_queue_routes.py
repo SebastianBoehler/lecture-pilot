@@ -118,6 +118,11 @@ def register_review_queue_routes(
             )
             if gate is None:
                 raise HTTPException(status_code=404, detail="Gate review is not available.")
+            if not gate.has_delayed_review:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Delayed reviews require a reviewed practice target with a changed task.",
+                )
             store = CoachingProgressStore(app.state.canvas_workspace.layout)
             try:
                 pending = bind_delayed_review(

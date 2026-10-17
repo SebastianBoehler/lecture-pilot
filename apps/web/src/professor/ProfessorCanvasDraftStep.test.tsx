@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "../i18n/i18n";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
-import {
-  learningDesignDiagnosticFixture,
-  learningDesignReportFixture,
-} from "./testLearningDesignReportFixture";
+import { learningDesignReview } from "./testLearningDesignReviewFixture";
 
 describe("ProfessorCanvasDraftStep generation controls", () => {
   it("shows generation directly without a disclosure or duplicate notice", () => {
@@ -81,6 +78,28 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
     expect(
       screen.queryByRole("button", { name: "Continue to publishing" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps generic checkpoints out of delayed review controls", () => {
+    const review = learningDesignReview(null);
+    review.learning_map.gates[0].practice_target_id = null;
+    const onSaveLearningDesign = vi.fn();
+    renderStep({ isFullCourse: false, totalCount: 1, review, onSaveLearningDesign });
+
+    openLearningDesign();
+    fireEvent.click(screen.getByText("Edit practice details"));
+
+    expect(screen.queryByLabelText("Review interval (days)")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Checkpoint prompt"), {
+      target: { value: "Explain the observed change." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save practice details" }));
+    expect(onSaveLearningDesign).toHaveBeenCalledWith(
+      "lecture-01",
+      expect.objectContaining({
+        gates: [expect.objectContaining({ transfer_prompt: null })],
+      }),
+    );
   });
 
   it("edits and approves a per-lecture gate contract before continuing", () => {
@@ -272,71 +291,4 @@ function step(
       />
     </I18nProvider>
   );
-}
-
-function learningDesignReview(approvedBy: string | null) {
-  return {
-    schema_version: 2,
-    course_id: "course-1",
-    lecture_id: "lecture-01",
-    draft_digest: "d".repeat(64),
-    source_revision: "s".repeat(64),
-    practice_design_revision: "a".repeat(64),
-    factual_quality_separate: true,
-    report: learningDesignReportFixture({
-      draftDigest: "d".repeat(64),
-      sourceRevision: "s".repeat(64),
-      learningMapRevision: "m".repeat(64),
-      diagnostics: [
-        learningDesignDiagnosticFixture({
-          message: "Practice has no checkpoint or quiz.",
-          sectionId: "practice",
-        }),
-      ],
-    }),
-    approval: approvedBy
-      ? {
-          approved_by: approvedBy,
-          approved_at: "2026-08-09T12:00:00Z",
-          draft_digest: "d".repeat(64),
-          source_revision: "s".repeat(64),
-          practice_design_revision: "a".repeat(64),
-        }
-      : null,
-    learning_map: {
-      course_id: "course-1",
-      lecture_id: "lecture-01",
-      title: "Mechanism",
-      objective: "Explain the source-backed mechanism.",
-      revision: "m".repeat(64),
-      nodes: [
-        {
-          id: "intro",
-          title: "Mechanism",
-          lecture_id: "lecture-01",
-          section_id: "intro",
-          source_ref: "lecture.md#mechanism",
-          prerequisites: [],
-          gate_ids: ["intro-check"],
-          quiz_ids: [],
-        },
-      ],
-      gates: [
-        {
-          id: "intro-check",
-          concept_id: "intro",
-          title: "Mechanism check",
-          prompt: "Explain the mechanism.",
-          evidence_criteria: [
-            { id: "mechanism", description: "Names the mechanism.", required: true },
-          ],
-          transfer_prompt: "Apply it elsewhere.",
-          review_after_days: 2,
-          revision: "g".repeat(64),
-          section_id: "intro",
-          source_ref: "lecture.md#mechanism",
-        },
-      ],
-    },
-  };
 }

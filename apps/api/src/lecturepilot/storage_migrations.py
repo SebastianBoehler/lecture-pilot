@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from lecturepilot.migrations_storage import (
     storage_migration_canvas_boilerplate,
+    storage_migration_generic_reviews,
     storage_migration_learning_design_approval,
     storage_migration_lecture_source_alias,
     storage_migration_legacy_publications,
@@ -47,6 +48,7 @@ MIGRATIONS: tuple[tuple[str, Migration], ...] = (
     ("2026-10-lecture-source-alias", storage_migration_lecture_source_alias.migrate),
     # The strict practice-exam model no longer carries retired PPI pattern fields.
     ("2026-10-practice-exam-ppi", storage_migration_practice_exam_ppi.migrate),
+    ("2026-10-generic-checkpoint-reviews", storage_migration_generic_reviews.migrate),
 )
 
 

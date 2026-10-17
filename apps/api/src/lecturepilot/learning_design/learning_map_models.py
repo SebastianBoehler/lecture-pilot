@@ -75,7 +75,7 @@ class LearningMapGate(BaseModel):
     prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     target_invariant: str | None = Field(default=None, min_length=1, max_length=1_000)
     evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
-    transfer_prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
+    transfer_prompt: str | None = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     independent_exit_task: str | None = Field(
         default=None, min_length=1, max_length=MAX_APPROVED_TASK_LENGTH
     )
@@ -94,6 +94,10 @@ class LearningMapGate(BaseModel):
     practice_target_id: str | None = Field(default=None, min_length=1, max_length=80)
 
     supplemental_tasks: list[SupplementalPracticeTask] = Field(default_factory=list, max_length=6)
+
+    @property
+    def has_delayed_review(self) -> bool:
+        return self.practice_target_id is not None and self.transfer_prompt is not None
 
     @model_serializer(mode="wrap")
     def serialize_legacy_compatible(self, handler):
@@ -141,6 +145,8 @@ class LearningMapGate(BaseModel):
                 raise ValueError("Supplemental tasks must differ from all bank members.")
             prompts.append(task.prompt)
         if self.practice_target_id is not None:
+            if self.transfer_prompt is None:
+                raise ValueError("Practice learning-map gates require a reviewed delayed task.")
             missing = PRACTICE_GATE_FIELDS - self.model_fields_set
             empty = {
                 field

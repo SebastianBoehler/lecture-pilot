@@ -54,8 +54,8 @@ def test_valid_report_is_deterministic_and_fully_source_backed() -> None:
         "status": "complete",
     }
     assert first.coverage.transfer_prompts.model_dump() == {
-        "covered": 2,
-        "total": 2,
+        "covered": 1,
+        "total": 1,
         "status": "complete",
     }
     assert first.concepts[0].source_backed_assessment_ids == [
@@ -113,7 +113,7 @@ def test_transfer_coverage_preserves_the_strict_learning_map_contract() -> None:
     )
 
     assert gateful.coverage.transfer_prompts.status == "complete"
-    assert gateful.coverage.transfer_prompts.covered == gateful.coverage.transfer_prompts.total == 2
+    assert gateful.coverage.transfer_prompts.covered == gateful.coverage.transfer_prompts.total == 1
     assert no_gate.coverage.transfer_prompts.model_dump() == {
         "covered": 1,
         "total": 1,

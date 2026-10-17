@@ -93,6 +93,7 @@ def test_wrong_plain_checkpoint_can_be_retried_and_passed_through_the_api(tmp_pa
     assert retry.json()["quality_gate"]["status"] == "passed"
     assert store.read(**ids).pending_check is None
     assert store.read(**ids).goal_evidence[f"{gate.id}@{gate.revision}"].independent
+    assert store.read(**ids).delayed_reviews == {}
 
 
 def test_saved_false_exhaustion_is_corrected_on_reload_and_submission(tmp_path):

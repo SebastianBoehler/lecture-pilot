@@ -30,7 +30,10 @@ def task_prompt(gate, task_id: str) -> str:
         "delayed-transfer": gate.transfer_prompt,
     }
     if task_id in canonical:
-        return canonical[task_id]
+        prompt = canonical[task_id]
+        if prompt is None:
+            raise ValueError("This checkpoint has no reviewed delayed task.")
+        return prompt
     return next(task.prompt for task in gate.supplemental_tasks if task.id == task_id)
 
 

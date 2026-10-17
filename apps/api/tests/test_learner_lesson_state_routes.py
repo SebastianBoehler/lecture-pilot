@@ -119,16 +119,17 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         stage="independent_exit",
         issued_at=now,
     )
-    key = review_key("risk-check", gate.revision)
+    reviewed = _gate(client, "practice-practice-target")
+    key = review_key(reviewed.id, reviewed.revision)
     progress.delayed_reviews = {
         key: DelayedReview(
-            gate_id="risk-check",
-            gate_revision=gate.revision,
-            section_id=gate.section_id,
-            transfer_prompt=gate.transfer_prompt,
+            gate_id=reviewed.id,
+            gate_revision=reviewed.revision,
+            section_id=reviewed.section_id,
+            transfer_prompt=reviewed.transfer_prompt,
             scheduled_at=now - timedelta(days=3),
             due_at=now - timedelta(days=1),
-            planned_delay_seconds=172800,
+            planned_delay_seconds=reviewed.review_after_days * 86400,
             attempted_at=None,
             completed_at=None,
             observed_delay_seconds=None,
@@ -174,8 +175,8 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         "goal_evidence": _expected_goal_evidence(client, COURSE_ID),
         "due_gate_reviews": [
             {
-                "gate_id": "risk-check",
-                "gate_revision": gate.revision,
+                "gate_id": reviewed.id,
+                "gate_revision": reviewed.revision,
                 "due_at": progress.delayed_reviews[key].due_at.isoformat().replace("+00:00", "Z"),
             }
         ],

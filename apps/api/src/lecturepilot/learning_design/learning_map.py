@@ -180,7 +180,7 @@ def _generic_checkpoint_gate(
         title=(block.caption or section.title)[:200],
         prompt=prompt,
         evidence_criteria=[LearningMapEvidenceCriterion(id=block.id, description=prompt)],
-        transfer_prompt=("Apply the same reasoning to a changed case: " + prompt)[:1_000],
+        transfer_prompt=None,
         review_after_days=2,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,

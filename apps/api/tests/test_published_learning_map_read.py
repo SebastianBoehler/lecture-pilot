@@ -30,7 +30,7 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
     review = client.get(path, headers=professor_headers()).json()
     update = _update_payload(review)
     generic_gate = next(gate for gate in update["gates"] if not gate["id"].startswith("practice-"))
-    generic_gate["transfer_prompt"] = "Apply the mechanism to a changed case."
+    assert generic_gate["transfer_prompt"] is None
     changed = client.put(path, headers=professor_headers(), json=update)
     assert changed.status_code == 200
     published = client.post(

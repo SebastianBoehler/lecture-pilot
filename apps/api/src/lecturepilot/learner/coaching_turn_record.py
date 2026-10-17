@@ -119,7 +119,11 @@ def record_coaching_turn(
         event.selected_support_level = expected_check.assistance.level if expected_check else None
         if next_check != expected_check:
             raise ValueError("Tutor response substituted the server-selected next check.")
-        if decision.status.value == "passed" and kind == "independent_exit":
+        if (
+            decision.status.value == "passed"
+            and kind == "independent_exit"
+            and gate.has_delayed_review
+        ):
             schedule_delayed_review(
                 progress,
                 gate_id=decision.gate_id,
