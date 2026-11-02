@@ -4,6 +4,9 @@ Research note, 2026-09-03. Primary sources only: the authors' 1 September
 2026 arXiv v1 paper, including its appendices, and Microsoft’s official source
 release at commit `072a3e3`.
 
+Update, 2026-11-02: venue/release status and the related &Tutor simulator-trained
+tutor are in [2026-11-02-andtutor-persimmon-tutormoments.md](2026-11-02-andtutor-persimmon-tutormoments.md).
+
 ## Bottom line
 
 StudentSim contains one genuinely useful idea for LecturePilot: evaluate a
