@@ -114,7 +114,7 @@ export const deMessages: Record<MessageKey, string> = {
   "usage.workloadCanvas": "Vorlesungsgenerierung",
   "login.title": "Bei LecturePilot anmelden",
   "login.subtitle":
-    "Nutze deine bestätigte Uni-E-Mail und ein eigenes LecturePilot-Passwort. Gib niemals dein ZDV-Passwort ein.",
+    "Nutze deine Uni-E-Mail und ein eigenes LecturePilot-Passwort.",
   "login.username": "Uni-E-Mail",
   "login.password": "LecturePilot-Passwort",
   "login.submit": "Anmelden",

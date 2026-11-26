@@ -110,7 +110,7 @@ export const enMessages = {
   "usage.workloadCanvas": "Lecture generation",
   "login.title": "Sign in to LecturePilot",
   "login.subtitle":
-    "Use your verified university email and a separate LecturePilot password. Never enter your ZDV password.",
+    "Use your university email and a separate LecturePilot password.",
   "login.username": "University email",
   "login.password": "LecturePilot password",
   "login.submit": "Sign in",
