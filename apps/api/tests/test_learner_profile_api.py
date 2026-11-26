@@ -112,3 +112,35 @@ def test_learner_profile_rejects_non_students(tmp_path) -> None:
         response = client.get("/me/learning-profile", headers=professor_headers())
 
     assert response.status_code == 403
+
+
+def test_personalization_setup_preserves_the_goal_on_skip_and_can_be_edited():
+    client = TestClient(create_app())
+    path = "/me/learning-profile"
+    headers = student_headers()
+    legacy = client.post(path, headers=headers, json={"learning_goal": "keep_up"}).json()
+    assert legacy["onboarding_completed"]
+    assert not legacy["personalization_setup_completed"]
+
+    skipped = client.post(path, headers=headers, json={"personalization_setup_completed": True})
+    assert skipped.status_code == 200
+    assert skipped.json()["personalization_setup_completed"]
+    assert skipped.json()["learning_goal"] == "keep_up"
+
+    edited = client.post(
+        path,
+        headers=headers,
+        json={"background": "  Software engineering  ", "example_interests": " Robotics "},
+    )
+    assert edited.status_code == 200
+    preferences = edited.json()["preferences"]
+    assert preferences["background"] == "Software engineering"
+    assert preferences["example_interests"] == "Robotics"
+    assert (
+        "background" not in client.get(path, headers=student_headers("other")).json()["preferences"]
+    )
+
+    cleared = client.post(path, headers=headers, json={"background": ""})
+    assert cleared.status_code == 200
+    assert "background" not in cleared.json()["preferences"]
+    assert cleared.json()["preferences"]["example_interests"] == "Robotics"

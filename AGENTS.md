@@ -36,9 +36,14 @@ temporarily holds the page in API process memory. Recall sends only the focused
 teaching excerpts and learner image to the model, with a feedback-only schema
 and no tools. The stable instructions and section excerpts come before the cache
 boundary. The feedback language and image follow it. Recall uses one model step
-and records cache reads when the provider supplies them. A learner can save a
-correction as a private passage annotation.
+and records cache reads and writes when the provider supplies them. A learner
+can save a correction as a private passage annotation.
 Existing reviewed practice owns the delayed review queue.
+
+The dashboard offers a three-step learner setup once. Saving or skipping is
+recorded through `/me/learning-profile`. Learners can edit their goal, background
+and example topics from the profile. Tutor prompts receive these optional
+preferences after the shared prompt prefix.
 
 ## Setup Commands
 

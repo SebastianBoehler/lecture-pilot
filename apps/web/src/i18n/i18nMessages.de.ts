@@ -281,23 +281,31 @@ export const deMessages: Record<MessageKey, string> = {
   "practice.solutions.pdfShort": "Lösungs-PDF",
   "practice.solutions.pdfPreparing": "Lösungs-PDF wird vorbereitet…",
   "practice.solutions.pdfFailed": "Das Lösungs-PDF konnte nicht erstellt werden.",
-  "onboarding.step": "Schritt {current} von 2",
+  "onboarding.step": "Schritt {current} von 3",
   "onboarding.goal.title": "Worauf arbeitest du hin?",
   "onboarding.goal.help":
-    "Wähle das Ziel, das LecturePilot priorisieren soll. Du kannst es später im Profil ändern.",
-  "onboarding.evidence.title": "LecturePilot kalibriert sich über deine Arbeit",
-  "onboarding.evidence.help":
-    "Der Tutor lässt dich keinen Lernstil auswählen. Die Unterstützung passt sich anhand deiner Antworten, Quizze und Checkpoints an.",
-  "onboarding.evidence.attempts":
-    "Dein eigener Versuch kommt vor Hinweisen oder Lösungsbeispielen.",
-  "onboarding.evidence.adaptation":
-    "Die Hilfestellung nimmt ab, sobald dein gezeigtes Verständnis wächst.",
-  "onboarding.evidence.control":
-    "Gespeicherte Ziele und Tutor-Erinnerungen bleiben im Profil sichtbar und löschbar.",
+    "Wähle, wobei dich LecturePilot unterstützen soll. Du kannst das Ziel später ändern.",
+  "onboarding.background.title": "Was bringst du schon mit?",
+  "onboarding.background.help":
+    "Nenne dein Fach, eine bisherige Erfahrung oder ein Werkzeug, das du kennst. Die Angabe ist freiwillig.",
+  "onboarding.examples.title": "Welche Beispiele helfen dir beim Verstehen?",
+  "onboarding.examples.help":
+    "Nenne Themen, die der Tutor für passende Beispiele nutzen kann. Die Angabe ist freiwillig.",
+  "onboarding.skip": "Einrichtung überspringen",
+  "onboarding.continue": "Weiter",
   "onboarding.back": "Zurück",
-  "onboarding.goToDashboard": "Zum Dashboard",
-  "onboarding.saving": "Wird gespeichert...",
-  "onboarding.failed": "Die Einrichtung konnte nicht gespeichert werden.",
+  "onboarding.goToDashboard": "Speichern und zur Übersicht",
+  "onboarding.saving": "Wird gespeichert…",
+  "onboarding.failed": "Die Einrichtung ließ sich nicht speichern.",
+  "personalization.title": "Beispiele personalisieren",
+  "personalization.background.label": "Dein Hintergrund",
+  "personalization.background.placeholder": "Ich studiere Wirtschaft und kenne etwas Python.",
+  "personalization.examples.label": "Themen für Beispiele",
+  "personalization.examples.placeholder": "Robotik, Fußball, Stadtplanung",
+  "personalization.disclosure":
+    "Der Tutor kann diese Angaben an seinen KI-Anbieter übermitteln, um Erklärungen anzupassen. Du kannst sie im Profil ändern oder löschen.",
+  "personalization.save": "Vorlieben speichern",
+  "personalization.saved": "Vorlieben gespeichert.",
   "learningGoal.keepUp": "Mit den Vorlesungen Schritt halten",
   "learningGoal.keepUp.help": "Bleibe aktuell und schließe Lücken aus verpassten Terminen.",
   "learningGoal.understandDeeply": "Konzepte tief verstehen",

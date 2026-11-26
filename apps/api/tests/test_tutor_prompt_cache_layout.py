@@ -178,3 +178,23 @@ def test_recall_cache_prefix_is_shared_across_learners_and_languages():
     assert "private" not in str(second)
     assert first[-1]["content"].endswith("English.")
     assert second[-1]["content"].endswith("German.")
+
+
+def test_learner_onboarding_details_are_only_in_the_private_suffix():
+    initial = _turn(focused="opening", message="Explain the opening idea.", late_block=False)
+    personalized = initial.model_copy(
+        update={
+            "user_memory": UserMemoryContext(
+                preferences={
+                    "background": "Physics undergraduate",
+                    "example_interests": "Flashlight circuits",
+                    "personalization_setup_completed": True,
+                }
+            )
+        }
+    )
+    messages = _messages(personalized)
+    assert _prefix(messages) == _prefix(_messages(initial))
+    assert "Physics undergraduate" in messages[-1]["content"]
+    assert "Flashlight circuits" in messages[-1]["content"]
+    assert "personalization_setup_completed" not in messages[-1]["content"]

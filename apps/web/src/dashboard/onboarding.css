@@ -48,14 +48,9 @@ body:has(.onboarding-dialog[open]) {
 
 .onboarding-progress i {
   display: block;
-  width: 50%;
   height: 100%;
   background: var(--color-accent-primary);
   transition: width 180ms ease;
-}
-
-.onboarding-progress i.is-complete {
-  width: 100%;
 }
 
 .onboarding-copy {
@@ -103,19 +98,25 @@ body:has(.onboarding-dialog[open]) {
   font-weight: 700;
 }
 
-.onboarding-evidence {
-  display: grid;
-  gap: 12px;
-  margin: 0 0 28px;
-  padding-left: 20px;
+.onboarding-disclosure {
+  margin-block: 16px 0;
   color: var(--color-text-secondary);
-  line-height: 1.45;
+  font-size: 14px;
 }
 
 .onboarding-actions {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 24px;
   gap: 12px;
+}
+
+.onboarding-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 700px) {

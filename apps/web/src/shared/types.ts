@@ -271,6 +271,7 @@ export type LearnerCourseProfile = {
 
 export type LearnerProfile = {
   onboarding_completed: boolean;
+  personalization_setup_completed?: boolean;
   learning_goal?: LearningGoal | null;
   preferences: Record<string, unknown>;
   global_notes: string;

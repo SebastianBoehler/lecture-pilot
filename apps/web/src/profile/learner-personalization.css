@@ -1,0 +1,22 @@
+.learner-personalization-field {
+  display: grid;
+  gap: 6px;
+}
+.learner-personalization-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font: inherit;
+}
+.learner-personalization-form {
+  display: grid;
+  gap: 12px;
+}
+.learner-personalization-form > button {
+  justify-self: start;
+}

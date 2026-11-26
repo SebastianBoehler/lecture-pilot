@@ -273,22 +273,31 @@ export const enMessages = {
   "practice.solutions.pdfShort": "Solutions PDF",
   "practice.solutions.pdfPreparing": "Preparing solutions PDF…",
   "practice.solutions.pdfFailed": "The solution PDF could not be generated.",
-  "onboarding.step": "Step {current} of 2",
+  "onboarding.step": "Step {current} of 3",
   "onboarding.goal.title": "What are you working toward?",
   "onboarding.goal.help":
-    "Choose the outcome LecturePilot should prioritize. You can change it later in your profile.",
-  "onboarding.evidence.title": "LecturePilot calibrates from your work",
-  "onboarding.evidence.help":
-    "The tutor does not ask you to choose a learning style. Support changes from your answers, quizzes, and checkpoints.",
-  "onboarding.evidence.attempts": "Your first attempt comes before hints or worked examples.",
-  "onboarding.evidence.adaptation":
-    "Scaffolding decreases as your demonstrated understanding grows.",
-  "onboarding.evidence.control":
-    "Saved goals and tutor memory stay visible and removable in your profile.",
+    "Choose the goal you want LecturePilot to help with. You can change it later.",
+  "onboarding.background.title": "What do you already bring?",
+  "onboarding.background.help":
+    "Mention a field you study, experience you have, or a tool you know. This is optional.",
+  "onboarding.examples.title": "What examples would make this click?",
+  "onboarding.examples.help":
+    "Name topics you’d like the tutor to draw on when they fit the material. This is optional.",
+  "onboarding.skip": "Skip setup",
+  "onboarding.continue": "Continue",
   "onboarding.back": "Back",
-  "onboarding.goToDashboard": "Go to dashboard",
-  "onboarding.saving": "Saving...",
+  "onboarding.goToDashboard": "Save and go to dashboard",
+  "onboarding.saving": "Saving…",
   "onboarding.failed": "Setup could not be saved.",
+  "personalization.title": "Personalize your examples",
+  "personalization.background.label": "Your background",
+  "personalization.background.placeholder": "I study economics and know some Python.",
+  "personalization.examples.label": "Topics for examples",
+  "personalization.examples.placeholder": "Robotics, football, city planning",
+  "personalization.disclosure":
+    "The tutor can share these details with its AI provider to tailor explanations. You can edit or clear them in your profile.",
+  "personalization.save": "Save preferences",
+  "personalization.saved": "Preferences saved.",
   "learningGoal.keepUp": "Keep up with lectures",
   "learningGoal.keepUp.help": "Stay current and close gaps from missed sessions.",
   "learningGoal.understandDeeply": "Understand concepts deeply",

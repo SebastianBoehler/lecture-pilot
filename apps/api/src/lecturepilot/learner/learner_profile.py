@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from lecturepilot.learner.user_memory import UserMemoryStore
 
@@ -17,8 +17,15 @@ _MAX_PREVIEW_BYTES = 32_000
 class LearnerProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    learning_goal: LearningGoal
+    learning_goal: LearningGoal | None = None
     onboarding_completed: bool = True
+    personalization_setup_completed: Literal[True] | None = None
+    background: Annotated[str, StringConstraints(strip_whitespace=True, max_length=240)] | None = (
+        None
+    )
+    example_interests: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=240)] | None
+    ) = None
 
 
 class LearnerFile(BaseModel):
@@ -43,6 +50,7 @@ class LearnerCourseProfile(BaseModel):
 
 class LearnerProfileResponse(BaseModel):
     onboarding_completed: bool = False
+    personalization_setup_completed: bool = False
     learning_goal: LearningGoal | None = None
     preferences: dict[str, Any] = Field(default_factory=dict)
     global_notes: str = ""
@@ -63,6 +71,7 @@ def read_learner_profile(
     courses_root = root / "courses"
     return LearnerProfileResponse(
         onboarding_completed=preferences.get("onboarding_completed") is True,
+        personalization_setup_completed=preferences.get("personalization_setup_completed") is True,
         learning_goal=learning_goal,
         preferences=preferences,
         global_notes=context.global_notes,

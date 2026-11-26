@@ -8,11 +8,16 @@ import {
 } from "./learnerProfileApi";
 import type { LearnerProfile, LearningGoal, LoginSession } from "../shared/types";
 
+import type { LearnerPersonalizationUpdate } from "./learnerPersonalization";
+
 export type LearnerProfileState = {
   profile: LearnerProfile | null;
   loading: boolean;
   error: string | null;
-  saveCalibration: (goal: LearningGoal) => Promise<void>;
+  saveCalibration: (
+    goal: LearningGoal | null,
+    personalization?: LearnerPersonalizationUpdate,
+  ) => Promise<void>;
   removePreference: (key: string) => Promise<void>;
   clearMemory: (courseId?: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -84,7 +89,8 @@ export function useLearnerProfile(
     profile,
     loading,
     error,
-    saveCalibration: (goal) => mutate(() => saveLearnerCalibration(session!, goal)),
+    saveCalibration: (goal, personalization) =>
+      mutate(() => saveLearnerCalibration(session!, goal, personalization)),
     removePreference: (key) => mutate(() => removeLearnerPreference(session!, key)),
     clearMemory: (courseId) => mutate(() => clearLearnerMemory(session!, courseId)),
     refresh,

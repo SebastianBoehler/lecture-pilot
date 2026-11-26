@@ -1,10 +1,10 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Dashboard } from "./Dashboard";
 import { previewLectures } from "./dashboardLectureProgress";
-import { renderWithI18n } from "../test/renderWithI18n";
+import { I18nWrapper, renderWithI18n } from "../test/renderWithI18n";
 import type { Lecture, LoginSession, UniversityCourse } from "../shared/types";
 import type { LearnerProfileState } from "../profile/useLearnerProfile";
 
@@ -145,3 +145,50 @@ function json(value: unknown) {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+it("offers the new setup to a learner with a previously saved goal until they skip or save", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json({ course_id: course.id, items: [], upcoming: [] })),
+  );
+  const user = userEvent.setup();
+  const state = profileState();
+  const profile = { ...state.profile!, learning_goal: "understand_deeply" as const };
+  const props = {
+    lectures,
+    publishedLectureIds: lectures.map(({ id }) => id),
+    session,
+    workspaceCourse: course,
+    onOpen: vi.fn(),
+    onSetAttendance: vi.fn(),
+  };
+  const { rerender } = render(
+    <Dashboard
+      {...props}
+      learnerProfileState={{
+        ...state,
+        profile: { ...profile, personalization_setup_completed: false },
+      }}
+    />,
+    { wrapper: I18nWrapper },
+  );
+  const setup = screen.getByRole("dialog", { name: "What are you working toward?" });
+  expect(
+    within(setup).getByRole("button", { name: /understand concepts deeply/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await user.click(within(setup).getByRole("button", { name: "Skip setup" }));
+  expect(state.saveCalibration).toHaveBeenCalledExactlyOnceWith(null, { complete: true });
+
+  rerender(
+    <Dashboard
+      {...props}
+      learnerProfileState={{
+        ...state,
+        profile: { ...profile, personalization_setup_completed: true },
+      }}
+    />,
+  );
+  expect(
+    screen.queryByRole("dialog", { name: "What are you working toward?" }),
+  ).not.toBeInTheDocument();
+});

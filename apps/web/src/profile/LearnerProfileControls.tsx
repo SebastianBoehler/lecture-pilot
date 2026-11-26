@@ -2,13 +2,20 @@ import { useState } from "react";
 import { BrainCircuit, CalendarClock, Check, GraduationCap, Network } from "lucide-react";
 
 import { useI18n } from "../i18n/i18n";
+import { LearnerPersonalizationEditor } from "./LearnerPersonalizationEditor";
 import { LearnerCourseFiles } from "../lesson/LearnerCourseFiles";
 import { findProfileCourse, humanizeCourseId } from "./profileCourseDisplay";
 import type { LearningGoal, LoginSession } from "../shared/types";
 import type { LearnerProfileState } from "./useLearnerProfile";
 
 const goals: LearningGoal[] = ["keep_up", "understand_deeply", "exam_preparation"];
-const systemPreferences = new Set(["learning_goal", "onboarding_completed"]);
+const systemPreferences = new Set([
+  "learning_goal",
+  "onboarding_completed",
+  "personalization_setup_completed",
+  "background",
+  "example_interests",
+]);
 
 export function LearnerProfileControls({
   session,
@@ -83,6 +90,12 @@ export function LearnerProfileControls({
           </div>
         </div>
       </section>
+
+      <LearnerPersonalizationEditor
+        key={session.username}
+        profile={profile}
+        save={state.saveCalibration}
+      />
 
       <section className="learner-profile-section" aria-labelledby="stored-memory-heading">
         <div className="profile-section-intro">

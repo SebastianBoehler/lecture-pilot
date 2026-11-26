@@ -126,3 +126,39 @@ describe("LearnerProfileControls", () => {
     expect(clearMemory).toHaveBeenCalledWith("martius-ml");
   });
 });
+
+it("edits example preferences without overwriting background or the learning goal", async () => {
+  const user = userEvent.setup();
+  const saveCalibration = vi.fn().mockResolvedValue(undefined);
+  renderWithI18n(
+    <LearnerProfileControls
+      session={session}
+      state={{
+        profile: {
+          ...profile,
+          preferences: {
+            ...profile.preferences,
+            background: "Economics",
+            example_interests: "Football",
+          },
+        },
+        loading: false,
+        error: null,
+        saveCalibration,
+        removePreference: vi.fn(),
+        clearMemory: vi.fn(),
+        refresh: vi.fn(),
+      }}
+    />,
+  );
+  expect(screen.getByRole("textbox", { name: "Your background" })).toHaveValue("Economics");
+  const topics = screen.getByRole("textbox", { name: "Topics for examples" });
+  expect(topics).toHaveValue("Football");
+  await user.clear(topics);
+  await user.click(screen.getByRole("button", { name: "Save preferences" }));
+  expect(saveCalibration).toHaveBeenCalledExactlyOnceWith(null, {
+    background: undefined,
+    exampleInterests: "",
+    complete: true,
+  });
+});

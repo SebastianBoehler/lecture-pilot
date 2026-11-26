@@ -37,7 +37,7 @@ def register_learner_profile_routes(app: FastAPI, *, course_tenant_id: str) -> N
         _require_student(context, course_tenant_id)
         app.state.user_memory_store.update_preferences(
             context.user_id,
-            update.model_dump(mode="json"),
+            update.model_dump(mode="json", exclude_none=True),
         )
         record_audit_event(
             app.state.database,
@@ -59,7 +59,10 @@ def register_learner_profile_routes(app: FastAPI, *, course_tenant_id: str) -> N
         context: TenantContext = Depends(request_context),
     ) -> Response:
         _require_student(context, course_tenant_id)
-        if key == "onboarding_completed" or not _PREFERENCE_KEY.fullmatch(key):
+        if key in {
+            "onboarding_completed",
+            "personalization_setup_completed",
+        } or not _PREFERENCE_KEY.fullmatch(key):
             raise HTTPException(status_code=400, detail="Preference key is not removable.")
         app.state.user_memory_store.delete_preference(context.user_id, key)
         return Response(status_code=204)

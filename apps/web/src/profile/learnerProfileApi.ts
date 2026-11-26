@@ -1,18 +1,27 @@
 import { apiRequest } from "../shared/apiRequest";
 import type { LearnerProfile, LearningGoal, LoginSession } from "../shared/types";
 
+import type { LearnerPersonalizationUpdate } from "./learnerPersonalization";
+
 export async function getLearnerProfile(session: LoginSession): Promise<LearnerProfile> {
   return profileRequest(session, "/me/learning-profile");
 }
 
 export async function saveLearnerCalibration(
   session: LoginSession,
-  learningGoal: LearningGoal,
+  learningGoal: LearningGoal | null,
+  personalization?: LearnerPersonalizationUpdate,
 ): Promise<LearnerProfile> {
   return profileRequest(session, "/me/learning-profile", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ learning_goal: learningGoal, onboarding_completed: true }),
+    body: JSON.stringify({
+      learning_goal: learningGoal ?? undefined,
+      onboarding_completed: true,
+      personalization_setup_completed: personalization?.complete,
+      background: personalization?.background,
+      example_interests: personalization?.exampleInterests,
+    }),
   });
 }
 

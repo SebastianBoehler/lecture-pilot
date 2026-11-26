@@ -159,8 +159,13 @@ export function Dashboard({
           ) : null}
         </div>
       </section>
-      {learnerProfileState?.profile && !learnerProfileState.profile.onboarding_completed ? (
-        <LearnerOnboarding onComplete={learnerProfileState.saveCalibration} />
+      {learnerProfileState?.profile &&
+      (!learnerProfileState.profile.onboarding_completed ||
+        learnerProfileState.profile.personalization_setup_completed === false) ? (
+        <LearnerOnboarding
+          profile={learnerProfileState.profile}
+          onComplete={learnerProfileState.saveCalibration}
+        />
       ) : null}
     </main>
   );

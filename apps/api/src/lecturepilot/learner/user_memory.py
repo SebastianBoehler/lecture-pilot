@@ -120,7 +120,11 @@ class UserMemoryStore:
             self._ensure_context_files(user_id, None)
             path = self.layout.user_memories_dir(user_id) / "preferences.json"
             preferences = _read_preferences(path)
-            preferences.update(updates)
+            for key, value in updates.items():
+                if value == "":
+                    preferences.pop(key, None)
+                else:
+                    preferences[key] = value
             atomic_write_json(path, preferences)
             return preferences
 
