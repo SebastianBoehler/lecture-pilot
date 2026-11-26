@@ -6,7 +6,13 @@ const WIDTH = 1200;
 const HEIGHT = 900;
 const PREFIX = "data:image/jpeg;base64,";
 
-export function HandwritingPad({ onSend }: { onSend: (image: string) => Promise<void> }) {
+export function HandwritingPad({
+  onSend,
+  sendLabel,
+}: {
+  onSend: (image: string) => Promise<void>;
+  sendLabel: "recall.feedback" | "recall.sendDesktop";
+}) {
   const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -121,7 +127,7 @@ export function HandwritingPad({ onSend }: { onSend: (image: string) => Promise<
           disabled={!hasInk || busy}
           onClick={() => void send()}
         >
-          {t(busy ? "recall.sending" : "recall.sendDesktop")}
+          {t(busy ? "recall.sending" : sendLabel)}
         </button>
       </div>
     </>

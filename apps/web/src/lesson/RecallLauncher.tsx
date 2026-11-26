@@ -22,7 +22,7 @@ export function RecallLauncher({
   const sectionLabel = useId();
   const [attempt, setAttempt] = useState<
     | { target: RecallTarget; mode: "camera"; stream: MediaStream | null }
-    | { target: RecallTarget; mode: "ipad" }
+    | { target: RecallTarget; mode: "local" | "paired" }
     | null
   >(null);
   return (
@@ -30,6 +30,15 @@ export function RecallLauncher({
       <p className="recall-launch-section" id={sectionLabel}>
         {t("recall.sectionLabel", { title: target.title })}
       </p>
+      <button
+        type="button"
+        className="secondary-button"
+        aria-describedby={sectionLabel}
+        disabled={disabled}
+        onClick={() => setAttempt({ target, mode: "local" })}
+      >
+        {t("recall.writeHere")}
+      </button>
       {camera.status === "active" ? (
         <button
           type="button"
@@ -46,20 +55,21 @@ export function RecallLauncher({
         className="secondary-button"
         aria-describedby={sectionLabel}
         disabled={disabled}
-        onClick={() => setAttempt({ target, mode: "ipad" })}
+        onClick={() => setAttempt({ target, mode: "paired" })}
       >
         {t("recall.ipad")}
       </button>
       {attempt ? (
         <RecallDialog
           target={attempt.target}
-          camera={
+          input={
             attempt.mode === "camera"
               ? {
+                  mode: "camera",
                   stream: attempt.stream,
                   capture: camera.capture,
                 }
-              : undefined
+              : { mode: attempt.mode }
           }
           onClose={() => setAttempt(null)}
           onSaved={onSaved}

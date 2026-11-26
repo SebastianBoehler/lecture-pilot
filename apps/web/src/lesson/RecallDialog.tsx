@@ -45,13 +45,15 @@ function Modal({
 
 export function RecallDialog({
   target,
-  camera,
+  input,
   onSubmit,
   onSaved,
   onClose,
 }: {
   target: RecallTarget;
-  camera?: { stream: MediaProvider | null; capture: () => string | undefined };
+  input:
+    | { mode: "camera"; stream: MediaProvider | null; capture: () => string | undefined }
+    | { mode: "local" | "paired" };
   onSubmit: (image: string) => Promise<string | void>;
   onSaved?: () => void;
   onClose: () => void;
@@ -64,11 +66,12 @@ export function RecallDialog({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
+  const { mode } = input;
   const fallback = t("recall.pairFailed");
   useVersionUpdateActivity(true);
 
   useEffect(() => {
-    if (camera) return;
+    if (mode !== "paired") return;
     const controller = new AbortController();
     let code: string | undefined;
     const closePair = () => {
@@ -113,15 +116,15 @@ export function RecallDialog({
     }
     void pair();
     return () => controller.abort();
-  }, [camera, fallback, target]);
+  }, [mode, fallback, target]);
 
-  async function submit() {
+  async function submit(localImage?: string) {
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
     setError(null);
     try {
-      const image = camera ? camera.capture() : ink;
+      const image = input.mode === "camera" ? input.capture() : (localImage ?? ink);
       if (!image) throw new Error(t("recall.imageRequired"));
       const reply = await onSubmit(image);
       if (reply) setFeedback({ message: reply, image });
@@ -137,6 +140,7 @@ export function RecallDialog({
   return (
     <Modal
       title={t("recall.title")}
+      wide={mode === "local"}
       onClose={() => {
         if (!busy) onClose();
       }}
@@ -161,9 +165,9 @@ export function RecallDialog({
         </>
       ) : (
         <>
-          <p>{t(camera ? "recall.paperPrompt" : "recall.inkPrompt")}</p>
-          {camera ? <RecallVideo stream={camera.stream} /> : null}
-          {!camera && !ink && !error && pairUrl && qr ? (
+          <p>{t(mode === "camera" ? "recall.paperPrompt" : "recall.inkPrompt")}</p>
+          {input.mode === "camera" ? <RecallVideo stream={input.stream} /> : null}
+          {mode === "paired" && !ink && !error && pairUrl && qr ? (
             <div className="recall-pair">
               <img src={qr} width={210} height={210} alt={t("recall.qr")} />
               <p>{t("recall.scan")}</p>
@@ -172,7 +176,9 @@ export function RecallDialog({
               </a>
             </div>
           ) : null}
-          {!camera && !pairUrl && !error ? <p role="status">{t("recall.creating")}</p> : null}
+          {mode === "paired" && !pairUrl && !error ? (
+            <p role="status">{t("recall.creating")}</p>
+          ) : null}
           {ink ? (
             <img
               className="recall-page"
@@ -180,7 +186,8 @@ export function RecallDialog({
               alt={t("recall.received")}
             />
           ) : null}
-          {camera || ink ? <p>{t("recall.imagePrivacy")}</p> : null}
+          {mode !== "paired" || ink ? <p>{t("recall.imagePrivacy")}</p> : null}
+          {mode === "local" ? <HandwritingPad onSend={submit} sendLabel="recall.feedback" /> : null}
           {error ? (
             <p className="form-error" role="alert">
               {error}
@@ -190,14 +197,16 @@ export function RecallDialog({
             <button type="button" className="secondary-button" disabled={busy} onClick={onClose}>
               {t("recall.back")}
             </button>
-            <button
-              type="button"
-              className="primary-button"
-              disabled={busy || (!camera && !ink)}
-              onClick={() => void submit()}
-            >
-              {t(busy ? "recall.sending" : "recall.feedback")}
-            </button>
+            {mode !== "local" ? (
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busy || (mode === "paired" && !ink)}
+                onClick={() => void submit()}
+              >
+                {t(busy ? "recall.sending" : "recall.feedback")}
+              </button>
+            ) : null}
           </div>
         </>
       )}
@@ -247,6 +256,7 @@ export function PairedInkDialog({
         <>
           <p>{t("recall.inkPrompt")}</p>
           <HandwritingPad
+            sendLabel="recall.sendDesktop"
             onSend={async (image) => {
               await inkPairRequest(lecture, "PUT", t("recall.pairFailed"), { code, image });
               setSent(true);

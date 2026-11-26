@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { renderWithI18n } from "../test/renderWithI18n";
 import { PairedInkDialog, RecallDialog } from "./RecallDialog";
+import { TutorComposer } from "./TutorComposer";
 import type { RecallTarget } from "./recallTarget";
 
 vi.mock("qrcode", () => ({
@@ -37,7 +38,13 @@ it("requires a received iPad page before asking the tutor and saves only an expl
   const onSaved = vi.fn();
   const user = userEvent.setup();
   renderWithI18n(
-    <RecallDialog target={target} onSubmit={submit} onClose={vi.fn()} onSaved={onSaved} />,
+    <RecallDialog
+      input={{ mode: "paired" }}
+      target={target}
+      onSubmit={submit}
+      onClose={vi.fn()}
+      onSaved={onSaved}
+    />,
   );
 
   const dialog = screen.getByRole("dialog", { name: "Recall from this section" });
@@ -128,4 +135,56 @@ it("keeps pencil strokes local until the iPad sends the finished page", async ()
       body: JSON.stringify({ image: "ink" }),
     }),
   );
+});
+
+it("submits a same-device Pencil attempt directly and keeps the page available after a failed turn", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  const draw = { fillRect: vi.fn(), beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn() };
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+    draw as unknown as CanvasRenderingContext2D,
+  );
+  vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,ink");
+  const send = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("Connection lost."))
+    .mockResolvedValue("Mention the boundary condition.");
+  const user = userEvent.setup();
+  renderWithI18n(<TutorComposer pending={false} onSendMessage={send} recallTarget={target} />);
+  await user.click(screen.getByRole("button", { name: "Write on this device" }));
+  const dialog = screen.getByRole("dialog", { name: "Recall from this section" });
+  const canvas = within(dialog).getByLabelText("Handwriting pad", { selector: "canvas" });
+  Object.defineProperty(canvas, "setPointerCapture", { value: vi.fn() });
+  vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 300, 225));
+
+  const feedback = within(dialog).getByRole("button", { name: "Get tutor feedback" });
+  expect(feedback).toBeDisabled();
+  fireEvent.pointerDown(canvas, {
+    pointerId: 7,
+    pointerType: "pen",
+    clientX: 30,
+    clientY: 30,
+    button: 0,
+  });
+  fireEvent.pointerUp(canvas, { pointerId: 7, pointerType: "pen" });
+  expect(draw.arc).toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  await user.click(feedback);
+  expect(within(dialog).getByRole("alert")).toHaveTextContent("Connection lost.");
+  expect(canvas).toBeInTheDocument();
+  await user.click(feedback);
+
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(send).toHaveBeenLastCalledWith(expect.any(String), {
+    cameraFrame: "ink",
+    focusedSectionId: "section",
+    recallPublicationVersion: 2,
+  });
+  expect(within(dialog).getByText("Mention the boundary condition.")).toBeVisible();
+  await user.click(within(dialog).getByText("View submitted page"));
+  expect(within(dialog).getByRole("img", { name: "Your submitted recall page" })).toHaveAttribute(
+    "src",
+    "data:image/jpeg;base64,ink",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
 });
