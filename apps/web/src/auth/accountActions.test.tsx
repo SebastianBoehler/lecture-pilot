@@ -21,7 +21,10 @@ it("registers university email with a separate password and shows email instruct
   vi.stubGlobal("fetch", fetchMock);
   renderWithI18n(<LoginView {...props} />);
   await user.click(screen.getByRole("button", { name: "Create account" }));
-  await user.type(screen.getByLabelText("University email"), "student@uni-tuebingen.de");
+  await user.type(screen.getByLabelText("University email"), "student");
+  expect(screen.getByRole("combobox", { name: "Email domain" })).toHaveValue(
+    "student.uni-tuebingen.de",
+  );
   const password = screen.getByLabelText("LecturePilot password");
   expect(password).toHaveAttribute("autocomplete", "new-password");
   expect(password).toHaveAttribute("minlength", "12");
@@ -30,7 +33,7 @@ it("registers university email with a separate password and shows email instruct
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Check your inbox"));
   expect(fetchMock.mock.calls[0][0]).toContain("/auth/register");
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-    email: "student@uni-tuebingen.de",
+    email: "student@student.uni-tuebingen.de",
     password: "a separate password",
   });
 });

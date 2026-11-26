@@ -1,5 +1,6 @@
 export const accountMessages = {
   en: {
+    "account.emailDomain": "Email domain",
     "account.register": "Create account",
     "account.forgot": "Forgot password?",
     "account.verify": "Verify email",
@@ -9,6 +10,7 @@ export const accountMessages = {
     "account.updated": "Account updated. You can now sign in.",
   },
   de: {
+    "account.emailDomain": "E-Mail-Domain",
     "account.register": "Konto erstellen",
     "account.forgot": "Passwort vergessen?",
     "account.verify": "E-Mail bestätigen",

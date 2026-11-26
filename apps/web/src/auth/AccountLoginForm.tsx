@@ -7,6 +7,8 @@ import type { LoginSession } from "../shared/types";
 import { accountAction, readAccountLink, type AccountMode } from "./accountActions";
 import { useVersionUpdateActivity } from "../shell/VersionUpdateBoundary";
 
+const emailDomains = ["student.uni-tuebingen.de", "uni-tuebingen.de"];
+
 export function AccountLoginForm({
   onLogin,
   onOpenDemo,
@@ -26,6 +28,8 @@ export function AccountLoginForm({
     setIdentifier: setUsername,
     setRemember: setRememberUsername,
   } = useRememberedLoginIdentifier();
+  const [emailDomain, setEmailDomain] = useState(emailDomains[0]);
+  const hasFullEmail = username.includes("@");
   const [link] = useState(readAccountLink);
   const [mode, setMode] = useState<AccountMode>(link.mode);
   const [notice, setNotice] = useState<string | null>(null);
@@ -33,20 +37,29 @@ export function AccountLoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialUsername] = useState(username);
-  useVersionUpdateActivity(isSubmitting || Boolean(password) || username !== initialUsername);
+  useVersionUpdateActivity(
+    isSubmitting
+      || Boolean(password)
+      || username !== initialUsername
+      || emailDomain !== emailDomains[0],
+  );
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) return;
     setError(null);
     setIsSubmitting(true);
+    const identifier = String(new FormData(event.currentTarget).get("username") ?? "").trim();
+    const email = identifier && !identifier.includes("@")
+      ? `${identifier}@${emailDomain}`
+      : identifier;
     try {
       if (mode === "login") {
-        const session = await loginWithPassword({ email: username.trim(), password });
-        persistRememberedIdentifier();
+        const session = await loginWithPassword({ email, password });
+        persistRememberedIdentifier(email);
         onLogin(session);
       } else {
-        await accountAction(mode, { email: username.trim(), password, token: link.token });
+        await accountAction(mode, { email, password, token: link.token });
         setNotice(t(mode === "verify" || mode === "reset" ? "account.updated" : "account.sent"));
         if (mode === "verify" || mode === "reset") {
           window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -64,21 +77,38 @@ export function AccountLoginForm({
   return (
     <form autoComplete="on" className="login-form" method="post" onSubmit={submitLogin}>
       {mode !== "verify" && mode !== "reset" ? (
-        <label>
-          {t("login.username")}
-          <input
-            autoCapitalize="none"
-            autoComplete="username"
-            id="username"
-            type="email"
-            maxLength={200}
-            name="username"
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            spellCheck={false}
-            value={username}
-          />
-        </label>
+        <div className="login-email">
+          <label htmlFor="username">{t("login.username")}</label>
+          <div className="login-email-fields">
+            <input
+              autoCapitalize="none"
+              autoComplete="username"
+              id="username"
+              inputMode="email"
+              maxLength={200}
+              name="username"
+              onChange={(event) => setUsername(event.target.value)}
+              pattern={String.raw`[^@\s]+(?:@[^@\s]+\.[^@\s]+)?`}
+              required
+              spellCheck={false}
+              type="text"
+              value={username}
+            />
+            {hasFullEmail ? null : (
+              <select
+                aria-label={t("account.emailDomain")}
+                onChange={(event) => setEmailDomain(event.target.value)}
+                value={emailDomain}
+              >
+                {emailDomains.map((domain) => (
+                  <option key={domain} value={domain}>
+                    @{domain}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
       ) : null}
       {mode !== "verify" && mode !== "forgot" ? (
         <label>

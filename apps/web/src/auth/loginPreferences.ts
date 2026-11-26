@@ -14,9 +14,9 @@ export function useRememberedLoginIdentifier() {
     if (!nextRemember) removeRememberedIdentifier();
   }
 
-  function persistRememberedIdentifier() {
+  function persistRememberedIdentifier(email: string) {
     writeRememberChoice(remember);
-    if (remember) writeRememberedIdentifier(identifier);
+    if (remember) writeRememberedIdentifier(email);
     else removeRememberedIdentifier();
   }
 

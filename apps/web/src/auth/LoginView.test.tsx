@@ -114,7 +114,8 @@ describe("LoginView", () => {
     );
 
     expect(screen.getByRole("checkbox", { name: /remember email/i })).toBeChecked();
-    await user.type(screen.getByLabelText(/university email/i), "student01@uni-tuebingen.de");
+    await user.type(screen.getByLabelText(/university email/i), "student01");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Email domain" }), "uni-tuebingen.de");
     await user.type(screen.getByLabelText(/^lecturepilot password$/i), "student-secret");
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
@@ -146,6 +147,7 @@ describe("LoginView", () => {
     );
 
     expect(screen.getByLabelText(/university email/i)).toHaveValue("student01@uni-tuebingen.de");
+    expect(screen.queryByRole("combobox", { name: "Email domain" })).not.toBeInTheDocument();
     const remember = screen.getByRole("checkbox", { name: /remember email/i });
     expect(remember).toBeChecked();
 
