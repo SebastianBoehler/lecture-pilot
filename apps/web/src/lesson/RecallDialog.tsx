@@ -59,7 +59,7 @@ export function RecallDialog({
   const { t } = useI18n();
   const [pairUrl, setPairUrl] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ message: string; image: string } | null>(null);
   const [ink, setInk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -124,7 +124,7 @@ export function RecallDialog({
       const image = camera ? camera.capture() : ink;
       if (!image) throw new Error(t("recall.imageRequired"));
       const reply = await onSubmit(image);
-      if (reply) setFeedback(reply);
+      if (reply) setFeedback({ message: reply, image });
       else onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("chat.failed"));
@@ -143,7 +143,22 @@ export function RecallDialog({
     >
       <strong>{target.title}</strong>
       {feedback ? (
-        <RecallCorrection target={target} feedback={feedback} onSaved={onSaved} onClose={onClose} />
+        <>
+          <details className="recall-submitted-page">
+            <summary>{t("recall.viewSubmitted")}</summary>
+            <img
+              className="recall-page"
+              src={`data:image/jpeg;base64,${feedback.image}`}
+              alt={t("recall.submittedPage")}
+            />
+          </details>
+          <RecallCorrection
+            target={target}
+            feedback={feedback.message}
+            onSaved={onSaved}
+            onClose={onClose}
+          />
+        </>
       ) : (
         <>
           <p>{t(camera ? "recall.paperPrompt" : "recall.inkPrompt")}</p>

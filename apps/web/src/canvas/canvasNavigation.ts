@@ -1,6 +1,6 @@
 export function scrollToCanvasAnchor(id: string) {
   const anchor = document.getElementById(id);
-  if (typeof anchor?.scrollIntoView !== "function") return;
+  if (typeof anchor?.scrollIntoView !== "function") return false;
   const isSection = anchor.classList.contains("canvas-section");
   if (isSection) {
     const banner = anchor.closest(".lesson-main")?.querySelector(".professor-preview-banner");
@@ -13,4 +13,5 @@ export function scrollToCanvasAnchor(id: string) {
     behavior: reducedMotion ? "instant" : "smooth",
     block: isSection ? "start" : "center",
   });
+  return true;
 }

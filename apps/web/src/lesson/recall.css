@@ -48,6 +48,22 @@
   gap: 8px;
   margin-bottom: 8px;
 }
+.recall-launch-section {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.recall-submitted-page {
+  margin-block: 12px;
+}
+.recall-submitted-page > summary {
+  cursor: pointer;
+}
+.recall-submitted-page .recall-page {
+  margin-top: 8px;
+}
 .recall-note {
   display: grid;
   gap: 6px;

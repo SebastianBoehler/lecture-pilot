@@ -4,7 +4,8 @@
 
 .canvas-block.is-highlighted {
   border-radius: 8px;
-  animation: block-target-fade 1.8s ease-out forwards;
+  background: var(--color-highlight-bg);
+  outline: 1px solid var(--color-highlight-border);
 }
 
 .phrase-highlight {
@@ -12,18 +13,6 @@
   padding: 0 2px;
   background: color-mix(in srgb, var(--color-highlight-border) 42%, transparent);
   color: inherit;
-  animation: phrase-target-fade 1.8s ease-out forwards;
-}
-
-@keyframes phrase-target-fade {
-  0%,
-  22% {
-    background: var(--color-highlight-border);
-  }
-
-  100% {
-    background: color-mix(in srgb, var(--color-highlight-border) 42%, transparent);
-  }
 }
 
 @keyframes block-target-fade {

@@ -57,6 +57,12 @@ it("requires a received iPad page before asking the tutor and saves only an expl
   await user.click(feedback);
   expect(submit).toHaveBeenCalledExactlyOnceWith("handwritten-page");
 
+  await user.click(within(dialog).getByText("View submitted page"));
+  expect(within(dialog).getByRole("img", { name: "Your submitted recall page" })).toHaveAttribute(
+    "src",
+    "data:image/jpeg;base64,handwritten-page",
+  );
+  expect(submit).toHaveBeenCalledOnce();
   const correction = within(dialog).getByRole("textbox", {
     name: "Write one correction to remember",
   });

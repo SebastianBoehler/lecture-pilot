@@ -43,13 +43,11 @@ export function LessonCanvas({
   const initialNavigationVersion = useRef(navigationVersion);
 
   useEffect(() => {
-    if (navigationVersion === initialNavigationVersion.current) return;
-    scrollToCanvasAnchor(focusedSectionId);
-  }, [focusedSectionId, navigationVersion]);
-
-  useEffect(() => {
-    if (highlightedBlockId) scrollToCanvasAnchor(highlightedBlockId);
-  }, [highlightedBlockId, navigationVersion]);
+    if (highlightedBlockId && scrollToCanvasAnchor(highlightedBlockId)) return;
+    if (navigationVersion !== initialNavigationVersion.current) {
+      scrollToCanvasAnchor(focusedSectionId);
+    }
+  }, [focusedSectionId, highlightedBlockId, navigationVersion]);
 
   function isActive(id: DocumentAnchorId) {
     return activeAnchorId ? activeAnchorId === id : focusedSectionId === id;

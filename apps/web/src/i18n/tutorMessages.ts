@@ -35,6 +35,9 @@ export const tutorMessages = {
     "camera.frameTooLarge": "The camera frame is too large. Reposition the camera and try again.",
     "recall.title": "Recall from this section",
     "recall.ipad": "Recall with iPad",
+    "recall.sectionLabel": "Recall practice for {title}",
+    "recall.viewSubmitted": "View submitted page",
+    "recall.submittedPage": "Your submitted recall page",
     "recall.paperPrompt":
       "Write the main idea and reasoning from memory. Then show the page to the camera.",
     "recall.inkPrompt": "Write the main idea and reasoning from memory.",
@@ -115,6 +118,9 @@ export const tutorMessages = {
       "Das Kamerabild ist zu groß. Richte die Kamera neu aus und versuche es erneut.",
     "recall.title": "Diesen Abschnitt aus dem Gedächtnis erklären",
     "recall.ipad": "Wiederholen mit iPad",
+    "recall.sectionLabel": "Wiederholung für {title}",
+    "recall.viewSubmitted": "Gesendete Seite ansehen",
+    "recall.submittedPage": "Deine gesendete Seite zur Wiederholung",
     "recall.paperPrompt":
       "Schreibe den Kerngedanken und die Begründung aus dem Gedächtnis auf. Zeige das Blatt dann der Kamera.",
     "recall.inkPrompt": "Schreibe den Kerngedanken und die Begründung aus dem Gedächtnis auf.",

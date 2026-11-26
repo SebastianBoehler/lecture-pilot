@@ -114,10 +114,14 @@ it("keeps the draft when the active camera has no frame", async () => {
   );
   const recall = { name: "Recall from this section" };
   expect(screen.queryByRole("button", recall)).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Recall with iPad" })).toBeEnabled();
+  const ipadRecall = screen.getByRole("button", { name: "Recall with iPad" });
+  expect(ipadRecall).toBeEnabled();
+  expect(ipadRecall).toHaveAccessibleDescription("Recall practice for Section");
   await user.click(screen.getByRole("button", { name: "Share desk camera" }));
   await screen.findByRole("combobox", { name: "Camera" });
-  expect(screen.getByRole("button", recall)).toBeEnabled();
+  expect(screen.getByRole("button", recall)).toHaveAccessibleDescription(
+    "Recall practice for Section",
+  );
 
   const field = screen.getByRole("textbox", { name: "Tutor message" });
   fireEvent.change(field, { target: { value: "Keep my question" } });

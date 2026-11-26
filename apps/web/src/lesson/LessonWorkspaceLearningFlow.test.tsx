@@ -45,6 +45,21 @@ describe("LessonWorkspace learning attempts", () => {
     );
     expect(scroll).toHaveBeenLastCalledWith({ behavior: "instant", block: "center" });
   });
+  it("lands on the tutor's exact passage with one scroll", () => {
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scroll,
+    });
+    const view = renderWorkspace({ onSendMessage: tutorMessageMock() });
+
+    view.highlight("risk-quiz");
+    expect(scroll).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ block: "center" }));
+
+    scroll.mockClear();
+    view.highlight("missing-block");
+    expect(scroll).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ block: "start" }));
+  });
   it("resumes the persisted check in the canvas without changing the published task", async () => {
     const user = userEvent.setup();
     const onSendMessage = tutorMessageMock();
@@ -175,6 +190,8 @@ function renderWorkspace({
   panelMode?: "outline" | "chat" | null;
   draftMode?: boolean;
 }) {
+  let navigationVersion = 0;
+  let highlightedBlockId: string | null = null;
   const view = (state: LearnerLessonState | null) => (
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <LessonWorkspace
@@ -192,7 +209,7 @@ function renderWorkspace({
         canvasError={null}
         courseId="course-1"
         focusedSectionId="risk"
-        highlightedBlockId={null}
+        highlightedBlockId={highlightedBlockId}
         highlightedText={null}
         lecture={{
           id: "lecture-1",
@@ -202,7 +219,7 @@ function renderWorkspace({
           attendance: "present",
         }}
         messages={[]}
-        navigationVersion={0}
+        navigationVersion={navigationVersion}
         panelMode={panelMode}
         learnerState={
           state ?? {
@@ -227,7 +244,14 @@ function renderWorkspace({
     </I18nProvider>
   );
   const rendered = render(view(learnerState));
-  return { setLearnerState: (state: LearnerLessonState | null) => rendered.rerender(view(state)) };
+  return {
+    setLearnerState: (state: LearnerLessonState | null) => rendered.rerender(view(state)),
+    highlight(id: string) {
+      navigationVersion += 1;
+      highlightedBlockId = id;
+      rendered.rerender(view(learnerState));
+    },
+  };
 }
 
 function tutorMessageMock() {

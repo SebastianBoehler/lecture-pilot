@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useI18n } from "../i18n/i18n";
 import type { TutorMessageOptions } from "../canvas/canvasLearningActions";
 import { RecallDialog } from "./RecallDialog";
@@ -19,6 +19,7 @@ export function RecallLauncher({
   onSend: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
 }) {
   const { t } = useI18n();
+  const sectionLabel = useId();
   const [attempt, setAttempt] = useState<
     | { target: RecallTarget; mode: "camera"; stream: MediaStream | null }
     | { target: RecallTarget; mode: "ipad" }
@@ -26,10 +27,14 @@ export function RecallLauncher({
   >(null);
   return (
     <div className="recall-launch">
+      <p className="recall-launch-section" id={sectionLabel}>
+        {t("recall.sectionLabel", { title: target.title })}
+      </p>
       {camera.status === "active" ? (
         <button
           type="button"
           className="secondary-button"
+          aria-describedby={sectionLabel}
           disabled={disabled}
           onClick={() => setAttempt({ target, mode: "camera", stream: camera.getStream() })}
         >
@@ -39,6 +44,7 @@ export function RecallLauncher({
       <button
         type="button"
         className="secondary-button"
+        aria-describedby={sectionLabel}
         disabled={disabled}
         onClick={() => setAttempt({ target, mode: "ipad" })}
       >
