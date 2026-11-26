@@ -23,6 +23,7 @@ _SAFE_KEYS = {
     "attempt",
     "canvas_commands",
     "cached_input_tokens",
+    "cache_write_input_tokens",
     "course_count",
     "course_id",
     "duration_ms",

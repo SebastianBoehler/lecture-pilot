@@ -58,9 +58,12 @@ class MeteredAuthoringModel(WrapperModel):
                         "Provider response omitted usage accounting or returned invalid counters."
                     )
                 usage.input_tokens, usage.output_tokens = counts
-                usage.cache_read_tokens = (
+                input_details = (
                     raw.get("input_tokens_details", raw.get("prompt_tokens_details")) or {}
-                ).get("cached_tokens", 0)
+                )
+                usage.cache_read_tokens = input_details.get("cached_tokens", 0)
+                if isinstance(input_details.get("cache_write_tokens"), int):
+                    usage.details["cache_write_input_tokens"] = input_details["cache_write_tokens"]
                 usage.details["reasoning_tokens"] = (
                     raw.get("output_tokens_details", raw.get("completion_tokens_details")) or {}
                 ).get("reasoning_tokens", 0)

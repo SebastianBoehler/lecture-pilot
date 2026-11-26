@@ -16,7 +16,7 @@ from test_authoring_job import authoring_job
         {
             "input_tokens": 100,
             "output_tokens": 20,
-            "input_tokens_details": {"cached_tokens": 60},
+            "input_tokens_details": {"cached_tokens": 60, "cache_write_tokens": 20},
             "output_tokens_details": {"reasoning_tokens": 5},
         },
         {
@@ -49,6 +49,9 @@ async def test_raw_usage_survives_unknown_model_price_catalogue(tmp_path, raw):
     assert result.usage.output_tokens == 20
     nullable_details = raw.get("prompt_tokens_details", {}) is None
     assert result.usage.cache_read_tokens == (0 if nullable_details else 60)
+    assert result.usage.details.get("cache_write_input_tokens", 0) == (
+        20 if "input_tokens_details" in raw else 0
+    )
     assert result.usage.details["reasoning_tokens"] == (0 if nullable_details else 5)
 
 

@@ -196,6 +196,7 @@ def _record_turn_usage(model: str, budget: TutorTurnBudget, usage) -> None:
         requested_count=usage.requests,
         input_tokens=usage.input_tokens,
         cached_input_tokens=usage.cache_read_tokens,
+        cache_write_input_tokens=usage.details.get("cache_write_input_tokens", 0),
         output_tokens=usage.output_tokens,
     )
 
