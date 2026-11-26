@@ -1,0 +1,59 @@
+.recall-dialog {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1.25rem;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+.recall-dialog::backdrop {
+  background: var(--color-bg-primary);
+}
+.recall-dialog h2 {
+  margin-top: 0;
+}
+.recall-dialog-wide {
+  width: min(56rem, calc(100vw - 2rem));
+}
+.recall-pair {
+  text-align: center;
+}
+.recall-page {
+  display: block;
+  width: 100%;
+  max-height: 50dvh;
+  object-fit: contain;
+}
+.recall-ink {
+  display: block;
+  width: min(100%, 78dvh);
+  height: auto;
+  margin-inline: auto;
+  touch-action: none;
+  background: white;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+}
+.recall-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-block: 12px;
+}
+.recall-launch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.recall-note {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+.recall-note textarea {
+  width: 100%;
+  resize: vertical;
+}

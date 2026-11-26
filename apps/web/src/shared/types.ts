@@ -282,6 +282,8 @@ export type ChatMessage = {
   id: string;
   role: "agent" | "user";
   content: string;
+  cameraAttached?: boolean;
+  recallAttempt?: boolean;
   isPending?: boolean;
   toolTags?: string[];
 };

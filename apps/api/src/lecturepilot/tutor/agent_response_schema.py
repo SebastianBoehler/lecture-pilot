@@ -7,12 +7,14 @@ from lecturepilot.learning_design.learning_map import LearningMapGate
 from lecturepilot.tutor.model_commands import checkpoint_assessment_required
 from lecturepilot.core.models import AgentTurnInput
 from lecturepilot.tutor.provider_turn_schema import assessment_schema
-from lecturepilot.tutor.provider_turn_result import ProviderAgentTurnResult
+from lecturepilot.tutor.provider_turn_result import ProviderAgentTurnResult, ProviderRecallResult
 from lecturepilot.tutor.provider_source_routes import SourceRoutingProposal, SourceRoutingReview
 from lecturepilot.llm.provider_json_schema import provider_json_schema
 
 
 def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
+    if turn.recall_publication_version:
+        return _routing_response_format("lecturepilot_section_recall", ProviderRecallResult)
     bound = checkpoint_assessment_required(turn)
     schema = _agent_turn_schema(
         assessment_gate=(turn.active_gate if bound else None),

@@ -1,5 +1,7 @@
 """Provider-compatible settings shared by native Pydantic AI agents."""
 
+from hashlib import sha256
+
 from lecturepilot.llm.model_request_options import _is_openai_reasoning_model, tool_reasoning_effort
 from lecturepilot.core.models import ProviderSettings
 
@@ -12,6 +14,7 @@ def tutor_prompt_cache_key(
     course_id: str,
     lecture_id: str,
     publication_version: int | None,
+    recall_section: str | None = None,
 ) -> str | None:
     """Stable across learners and turns. User id is omitted so shared prefixes can hit.
 
@@ -21,7 +24,11 @@ def tutor_prompt_cache_key(
     if settings.provider not in _PROMPT_CACHE_KEY_PROVIDERS:
         return None
     version = 0 if publication_version is None else publication_version
-    return f"lp:{settings.model}:{course_id}:{lecture_id}:{version}"
+    lecture_key = f"lp:{settings.model}:{course_id}:{lecture_id}:{version}"
+    if recall_section is not None:
+        digest = sha256(f"{lecture_key}:recall:{recall_section}".encode()).hexdigest()[:40]
+        return f"lp:recall:{digest}"
+    return lecture_key
 
 
 def native_model_settings(

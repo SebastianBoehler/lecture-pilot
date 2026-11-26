@@ -22,7 +22,7 @@ export function useCanvasLearningAttempts({
   workspaceMode: LearnerWorkspaceMode;
   openChat: () => void;
   onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
-  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
 }) {
   const { t } = useI18n();
   const [coachingError, setCoachingError] = useState<string | null>(null);

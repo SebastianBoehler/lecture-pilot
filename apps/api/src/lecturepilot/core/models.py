@@ -4,8 +4,9 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from lecturepilot.tutor.camera_frame import CameraFrame
 from lecturepilot.tutor.agent_context_models import (
     AgentCoachingContext,
     AgentConversationMessage,
@@ -222,6 +223,8 @@ class AgentAnalyticsContext(BaseModel):
 
 
 class AgentTurnInput(BaseModel):
+    recall_publication_version: int | None = Field(default=None, ge=1, strict=True)
+    camera_frame: bytes | None = Field(default=None, exclude=True, repr=False)
     predictions: list[CanvasPrediction] = Field(default_factory=list, max_length=1)
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
@@ -253,6 +256,9 @@ class AssessedAgentTurnInput(AgentTurnInput):
 class AgentTurnRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    camera_frame: CameraFrame | None = Field(default=None, repr=False)
+    recall_publication_version: int | None = Field(default=None, ge=1, strict=True)
+
     course_id: str = Field(min_length=1)
     lecture_id: str = Field(min_length=1)
     attendance: AttendanceStatus
@@ -264,6 +270,16 @@ class AgentTurnRequest(BaseModel):
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     readiness_task_id: str | None = Field(default=None, min_length=1, max_length=220)
     locale: Literal["en", "de"] = "en"  # The learner's UI language for backend-written text.
+
+    @model_validator(mode="after")
+    def camera_requires_chat(self):
+        if self.camera_frame is not None and (self.checkpoint_gate_id or self.readiness_task_id):
+            raise ValueError("Camera frames are only available in tutor chat.")
+        if self.recall_publication_version and (
+            self.camera_frame is None or not self.canvas_state.focused_section_id
+        ):
+            raise ValueError("Section recall requires an image and a focused section.")
+        return self
 
     def for_user(self, user_id: str) -> AgentTurnInput:
         return AgentTurnInput(user_id=user_id, model=None, **self.model_dump())

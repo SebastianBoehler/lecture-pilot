@@ -111,6 +111,8 @@ it("updates the tutor dialog semantics when the viewport crosses the mobile brea
   await user.tab();
   expect(screen.getByRole("button", { name: "Start dictation" })).toHaveFocus();
   await user.tab();
+  expect(screen.getByRole("button", { name: "Share desk camera" })).toHaveFocus();
+  await user.tab();
   expect(close).toHaveFocus();
   act(() => {
     media.matches = false;

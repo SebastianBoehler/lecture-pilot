@@ -25,6 +25,21 @@ It edits the message draft; only Send submits text through the existing backend.
 Audio never enters provider routing. See `docs/browser-dictation.md` for module
 ownership, pinned build assets and microphone/CSP requirements.
 
+The optional desk camera starts in the tutor composer. While sharing is active,
+Send attaches one JPEG frame to the current chat turn. The backend passes it to
+the configured tutor model without saving it to the workspace or conversation
+history. Camera frames are excluded from assessment requests.
+
+Section recall binds the attempt to a published section and revision. It accepts
+a desk camera frame or one page from a same-account iPad QR pairing. Pairing
+temporarily holds the page in API process memory. Recall sends only the focused
+teaching excerpts and learner image to the model, with a feedback-only schema
+and no tools. The stable instructions and section excerpts come before the cache
+boundary. The feedback language and image follow it. Recall uses one model step
+and records cache reads when the provider supplies them. A learner can save a
+correction as a private passage annotation.
+Existing reviewed practice owns the delayed review queue.
+
 ## Setup Commands
 
 ```bash

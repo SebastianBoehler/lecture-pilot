@@ -73,6 +73,8 @@ export type AgentTurnInput = {
   attendance: Attendance;
   message: string;
   checkpoint_gate_id?: string;
+  camera_frame?: string;
+  recall_publication_version?: number;
   canvas_state: {
     focused_section_id: string | null;
   };

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from lecturepilot.tutor.agent_authorization import authorize_agent_turn
 from lecturepilot.tutor.agent_state_access import learner_state_store
@@ -51,7 +52,7 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
-        _preflight_learning_state(app, turn)
+        await run_in_threadpool(_preflight_learning_state, app, turn)
         return await complete_agent_turn(app, turn=turn, actor_user_id=access.actor_user_id)
 
     @app.post("/agent/turn/stream")
@@ -75,7 +76,7 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
-        _preflight_learning_state(app, turn)
+        await run_in_threadpool(_preflight_learning_state, app, turn)
         return StreamingResponse(
             agent_turn_events(app, turn=turn, actor_user_id=access.actor_user_id),
             media_type="application/x-ndjson",

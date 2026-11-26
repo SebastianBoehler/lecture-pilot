@@ -181,7 +181,15 @@ export function useLessonSession(options: LessonSessionOptions) {
     const pendingMessageId = `agent-pending-${timestamp}`;
     setMessages((current) => [
       ...current,
-      { id: userMessageId, role: "user", content: message },
+      {
+        id: userMessageId,
+        role: "user",
+        content: message,
+        cameraAttached: Boolean(
+          messageOptions.cameraFrame && !messageOptions.recallPublicationVersion,
+        ),
+        recallAttempt: Boolean(messageOptions.recallPublicationVersion),
+      },
       pendingTutorMessage(pendingMessageId),
     ]);
     let result;
@@ -193,6 +201,8 @@ export function useLessonSession(options: LessonSessionOptions) {
           attendance: lecture.attendance,
           message,
           checkpoint_gate_id: messageOptions.checkpointGateId,
+          camera_frame: messageOptions.cameraFrame,
+          recall_publication_version: messageOptions.recallPublicationVersion,
           canvas_state: {
             focused_section_id:
               messageOptions.focusedSectionId ?? (navigation.focusedSectionId || null),
@@ -219,6 +229,7 @@ export function useLessonSession(options: LessonSessionOptions) {
     setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
     await lessonState.applyTutorResult(result);
     options.onTutorTurn();
+    return result.message;
   }
 
   async function resetWorkspace(selection: WorkspaceResetSelection) {

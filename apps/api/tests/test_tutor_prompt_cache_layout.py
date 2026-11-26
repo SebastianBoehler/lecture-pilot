@@ -155,3 +155,26 @@ def _secret_turn(stage: str) -> AgentTurnInput:
             ],
         ),
     )
+
+
+def test_recall_cache_prefix_is_shared_across_learners_and_languages():
+    initial = _turn(focused="later", message="First attempt.", late_block=True)
+    initial.recall_publication_version = 1
+    initial.camera_frame = b"first-image"
+    next_turn = initial.model_copy(
+        update={
+            "user_id": "another-learner",
+            "locale": "de",
+            "message": "Second attempt.",
+            "camera_frame": b"second-image",
+            "user_memory": UserMemoryContext(global_notes="private"),
+        }
+    )
+    first, second = _messages(initial), _messages(next_turn)
+    assert _prefix(first) == _prefix(second)
+    assert first[1]["cache_boundary"] is True
+    assert "Focused passage past the outline" in first[1]["content"]
+    assert "Opening claim." not in first[1]["content"]
+    assert "private" not in str(second)
+    assert first[-1]["content"].endswith("English.")
+    assert second[-1]["content"].endswith("German.")

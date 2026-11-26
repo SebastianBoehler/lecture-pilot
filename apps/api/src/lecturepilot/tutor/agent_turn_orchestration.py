@@ -209,6 +209,12 @@ def _persist_agent_turn_result(
     activity: Callable[[str], None],
     observability: Observability,
 ) -> AgentTurnResult:
+    if turn.recall_publication_version:
+        result = AgentTurnResult(
+            message=result.message, model=result.model, created_at=result.created_at
+        )
+        persist_coaching_turn(app, turn, result, activity, observability)
+        return result
     if tool_executor is not None and tool_executor.canvas_changed:
         result = without_generated_section_commands(result)
     placements = {

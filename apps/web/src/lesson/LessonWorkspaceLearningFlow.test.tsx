@@ -170,7 +170,7 @@ function renderWorkspace({
   panelMode = null,
   draftMode = false,
 }: {
-  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
   learnerState?: LearnerLessonState | null;
   panelMode?: "outline" | "chat" | null;
   draftMode?: boolean;

@@ -8,7 +8,14 @@ from contextlib import asynccontextmanager
 
 import anyio
 from pydantic_ai import Agent, ModelRetry, NativeOutput, Tool, RunContext, StructuredDict
-from pydantic_ai.messages import CachePoint, ModelRequest, ModelResponse, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    BinaryContent,
+    CachePoint,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 
@@ -24,7 +31,6 @@ from lecturepilot.llm.native_model_settings import native_model_settings, tutor_
 from lecturepilot.llm.providers import ProviderConfigurationError
 from lecturepilot.tutor.tutor_turn_budget import (
     TUTOR_INPUT_TOKEN_LIMIT,
-    TUTOR_REQUEST_LIMIT,
     TutorTurnBudget,
     tutor_turn_budget,
 )
@@ -66,6 +72,8 @@ async def _native_tutor_turn(
         for m in conversation[:-1]
     ]
     prompt = conversation[-1]["content"]
+    if turn.camera_frame is not None:
+        prompt = [prompt, BinaryContent(data=turn.camera_frame, media_type="image/jpeg")]
     calls_per_step = defaultdict(int)
     tool_count = 0
 
@@ -104,9 +112,27 @@ async def _native_tutor_turn(
         if tool_executor is not None
         else []
     )
-    publication_version = (
+    publication_version = turn.recall_publication_version or (
         turn.analytics_context.publication_version if turn.analytics_context else None
     )
+    model_settings = native_model_settings(
+        settings,
+        temperature=0.3,
+        max_tokens=budget.max_tokens,
+        tool_calls=bool(tools),
+        prompt_cache_key=tutor_prompt_cache_key(
+            settings,
+            course_id=turn.course_id,
+            lecture_id=turn.lecture_id,
+            publication_version=publication_version,
+            recall_section=turn.canvas_state.focused_section_id
+            if turn.recall_publication_version
+            else None,
+        ),
+    )
+    if turn.recall_publication_version:
+        # OpenRouter can honor the shared section CachePoint without marking the private image.
+        model_settings.pop("openrouter_cache_messages", None)
 
     @asynccontextmanager
     async def provider():
@@ -127,19 +153,8 @@ async def _native_tutor_turn(
                 StructuredDict(lecturepilot_response_format(turn)["json_schema"]["schema"]),
                 strict=True,
             ),
-            retries=2,
-            model_settings=native_model_settings(
-                settings,
-                temperature=0.3,
-                max_tokens=budget.max_tokens,
-                tool_calls=bool(tools),
-                prompt_cache_key=tutor_prompt_cache_key(
-                    settings,
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    publication_version=publication_version,
-                ),
-            ),
+            retries=0 if budget.request_limit == 1 else 2,
+            model_settings=model_settings,
         )
 
         @agent.output_validator
@@ -159,7 +174,7 @@ async def _native_tutor_turn(
                 prompt,
                 message_history=history,
                 usage_limits=UsageLimits(
-                    request_limit=TUTOR_REQUEST_LIMIT,
+                    request_limit=budget.request_limit,
                     input_tokens_limit=TUTOR_INPUT_TOKEN_LIMIT,
                     output_tokens_limit=budget.output_tokens_limit,
                 ),
@@ -189,7 +204,7 @@ async def native_tutor_turn(**kwargs):
     budget = tutor_turn_budget(kwargs["turn"], tools=kwargs.get("tool_executor") is not None)
     # Provider-level transport retries may add requests beyond the agent's own request limit.
     with authoring_budget(
-        request_limit=TUTOR_REQUEST_LIMIT * 2,
+        request_limit=budget.request_limit * 2,
         input_tokens_limit=TUTOR_INPUT_TOKEN_LIMIT,
         output_tokens_limit=budget.output_tokens_limit,
     ):

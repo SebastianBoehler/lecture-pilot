@@ -47,7 +47,7 @@ def learner_sections_outline(turn: AgentTurnInput) -> str:
     return _trim_text("\n".join(lines), 6000)
 
 
-def focused_section_blocks(turn: AgentTurnInput) -> str:
+def focused_section_blocks(turn: AgentTurnInput, *, teaching_only: bool = False) -> str:
     document = turn.canvas_context
     focused_id = turn.canvas_state.focused_section_id
     if document is None or not focused_id:
@@ -55,6 +55,16 @@ def focused_section_blocks(turn: AgentTurnInput) -> str:
     section = next((item for item in document.sections if item.id == focused_id), None)
     if section is None:
         return "Focused section blocks: none."
+    if teaching_only:
+        section = section.model_copy(
+            update={
+                "blocks": [
+                    block
+                    for block in section.blocks
+                    if block.type not in {"prediction", "checkpoint", "quiz"}
+                ],
+            }
+        )
     lines = [
         f"Focused section blocks for {section.id}:",
         *_section_lines(section, block_limit=None),

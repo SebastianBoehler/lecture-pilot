@@ -1,4 +1,4 @@
-"""Validation errors on credential endpoints must never echo submitted secrets."""
+"""Keep credentials and camera frames out of validation responses."""
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -9,7 +9,12 @@ from fastapi.responses import JSONResponse
 def register_auth_validation(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):
-        if not request.url.path.startswith("/auth/"):
+        if not (
+            request.url.path.startswith("/auth/") or "/ink-pair" in request.url.path
+        ) and request.url.path not in {
+            "/agent/turn",
+            "/agent/turn/stream",
+        }:
             return await request_validation_exception_handler(request, exc)
         return JSONResponse(
             status_code=422,

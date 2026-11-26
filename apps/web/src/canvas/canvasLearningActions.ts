@@ -4,6 +4,8 @@ import type { CanvasBlock } from "../shared/types";
 
 export type TutorMessageOptions = {
   checkpointGateId?: string;
+  cameraFrame?: string;
+  recallPublicationVersion?: number;
   focusedSectionId?: string;
 };
 

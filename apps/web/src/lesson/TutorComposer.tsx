@@ -1,3 +1,8 @@
+import type { TutorMessageOptions } from "../canvas/canvasLearningActions";
+import { TutorCameraButton, TutorCameraPreview } from "./TutorCamera";
+import { RecallLauncher } from "./RecallLauncher";
+import type { RecallTarget } from "./recallTarget";
+import { useTutorCamera } from "./useTutorCamera";
 import { ArrowUp } from "lucide-react";
 import {
   useEffect,
@@ -14,10 +19,14 @@ import { useSpeechInput } from "./useSpeechInput";
 
 export function TutorComposer({
   pending,
+  recallTarget,
+  onRecallSaved,
   onSendMessage,
 }: {
   pending: boolean;
-  onSendMessage: (message: string) => Promise<void>;
+  recallTarget?: RecallTarget;
+  onRecallSaved?: () => void;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState("");
@@ -26,12 +35,13 @@ export function TutorComposer({
   const sendingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const busy = pending || sending;
+  const camera = useTutorCamera();
   const speech = useSpeechInput(busy, (text) => {
     setDraft((current) => `${current}${current && !/\s$/.test(current) ? " " : ""}${text}`);
     textareaRef.current?.focus();
   });
   const speechBusy = speech.state !== "idle";
-  const displayedError = error ?? speech.error;
+  const displayedError = error ?? speech.error ?? camera.error;
   useVersionUpdateActivity(busy || speechBusy || Boolean(draft.trim()));
   useLayoutEffect(() => {
     const field = textareaRef.current;
@@ -46,13 +56,16 @@ export function TutorComposer({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = draft.trim();
-    if (!message || pending || sendingRef.current || speechBusy) return;
+    if (!message || pending || sendingRef.current || speechBusy || camera.status === "opening")
+      return;
     sendingRef.current = true;
     setSending(true);
     setDraft("");
     setError(null);
     try {
-      await onSendMessage(message);
+      const cameraFrame = camera.capture();
+      if (cameraFrame) await onSendMessage(message, { cameraFrame });
+      else await onSendMessage(message);
     } catch (cause) {
       setDraft(message);
       setError(cause instanceof Error ? cause.message : t("chat.failed"));
@@ -76,7 +89,23 @@ export function TutorComposer({
 
   return (
     <div className="chat-dock">
+      {recallTarget ? (
+        <RecallLauncher
+          target={recallTarget}
+          camera={camera}
+          disabled={busy || speechBusy}
+          onSend={onSendMessage}
+          onSaved={onRecallSaved}
+        />
+      ) : null}
       <form className="chat-form" onSubmit={submit}>
+        <TutorCameraPreview
+          status={camera.status}
+          devices={camera.devices}
+          selected={camera.selected}
+          start={camera.start}
+          setPreview={camera.setPreview}
+        />
         <div className="chat-composer">
           <textarea
             aria-label={t("chat.message")}
@@ -103,11 +132,12 @@ export function TutorComposer({
               onStop={speech.stop}
               onCancel={speech.cancel}
             />
+            <TutorCameraButton camera={camera} disabled={busy} />
             <button
               aria-label={t("chat.send")}
               title={t("chat.send")}
               className="chat-send-button"
-              disabled={busy || speechBusy || !draft.trim()}
+              disabled={busy || speechBusy || camera.status === "opening" || !draft.trim()}
               type="submit"
             >
               <ArrowUp size={18} aria-hidden="true" />

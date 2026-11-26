@@ -9,6 +9,8 @@ from lecturepilot.canvas.course_canvas_context import (
     AnalyticsPublicationContext,
     InvalidPublishedCanvasContextError,
 )
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.independent_attempt import reject_chat_during_independent_attempt
 from lecturepilot.learner.coaching_orchestration import prepare_coaching_turn
 from lecturepilot.core.models import AgentTurnInput
 from lecturepilot.core.observability import Observability
@@ -21,6 +23,9 @@ def load_turn_context(
     observability: Observability,
     actor_user_id: str,
 ):
+    if turn.recall_publication_version:
+        activity("read canvas")
+        return _load_recall_context(app, turn), None
     tool_executor = None
     analytics_context = None
     if turn.course_id:
@@ -96,3 +101,32 @@ def load_turn_context(
         app, turn, activity, observability, analytics_context=analytics_context
     )
     return turn, tool_executor
+
+
+def _load_recall_context(app: FastAPI, turn: AgentTurnInput) -> AgentTurnInput:
+    workspace = app.state.canvas_workspace
+    snapshot = workspace.course_canvas_store.read_current_published_snapshot(
+        course_id=turn.course_id, lecture_id=turn.lecture_id
+    )
+    if snapshot is None or snapshot.version != turn.recall_publication_version:
+        raise HTTPException(409, "The recall section is no longer published.")
+    section = next(
+        (
+            item
+            for item in snapshot.document.sections
+            if item.id == turn.canvas_state.focused_section_id
+        ),
+        None,
+    )
+    if section is None:
+        raise HTTPException(409, "The recall section is no longer published.")
+    pending = (
+        CoachingProgressStore(workspace.layout)
+        .read(user_id=turn.user_id, course_id=turn.course_id, lecture_id=turn.lecture_id)
+        .pending_check
+    )
+    reject_chat_during_independent_attempt(
+        checkpoint_gate_id=None, stage=pending.stage if pending else None
+    )
+    document = snapshot.document.model_copy(update={"sections": [section]})
+    return turn.model_copy(update={"canvas_context": document})

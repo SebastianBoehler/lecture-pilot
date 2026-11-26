@@ -1,14 +1,18 @@
+import type { TutorMessageOptions } from "../canvas/canvasLearningActions";
 import { ArrowDown, ChevronRight } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { MathText } from "../canvas/MathText";
 import { LessonDrawerClose } from "./LessonDrawerClose";
 import { TutorActivity } from "./TutorActivity";
+import type { RecallTarget } from "./recallTarget";
 import { TutorComposer } from "./TutorComposer";
 import { useI18n } from "../i18n/i18n";
 import type { ChatMessage } from "../shared/types";
 
 export function TutorDrawer({
   messages,
+  recallTarget,
+  onRecallSaved,
   model,
   sessionGoal = null,
   readOnlyNotice,
@@ -16,11 +20,13 @@ export function TutorDrawer({
   onSendMessage,
 }: {
   messages: ChatMessage[];
+  recallTarget?: RecallTarget;
+  onRecallSaved?: () => void;
   model: string | null;
   sessionGoal?: string | null;
   readOnlyNotice?: string;
   onClose: () => void;
-  onSendMessage: (message: string) => Promise<void>;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
 }) {
   const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
@@ -96,6 +102,11 @@ export function TutorDrawer({
                     {t(message.role === "user" ? "chat.you" : "chat.title")}
                   </span>
                   <div className="chat-message-content">
+                    {message.cameraAttached || message.recallAttempt ? (
+                      <p className="tutor-camera-attached">
+                        {t(message.recallAttempt ? "recall.attemptAttached" : "camera.attached")}
+                      </p>
+                    ) : null}
                     <MathText highlightedText={null} mode="block" text={message.content} />
                   </div>
                 </div>
@@ -110,7 +121,12 @@ export function TutorDrawer({
               {t("chat.latest")}
             </button>
           ) : null}
-          <TutorComposer pending={hasPendingTurn} onSendMessage={onSendMessage} />
+          <TutorComposer
+            pending={hasPendingTurn}
+            onSendMessage={onSendMessage}
+            recallTarget={recallTarget}
+            onRecallSaved={onRecallSaved}
+          />
         </div>
       </div>
     </aside>

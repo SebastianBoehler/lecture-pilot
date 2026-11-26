@@ -1,0 +1,36 @@
+.tutor-camera {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+}
+.tutor-camera video {
+  width: 100%;
+  max-height: 170px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+}
+.tutor-camera select {
+  width: 100%;
+  margin-top: 4px;
+}
+.tutor-camera p,
+.tutor-camera-attached {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.tutor-camera-toggle {
+  display: inline-grid;
+  flex: 0 0 32px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 50%;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}

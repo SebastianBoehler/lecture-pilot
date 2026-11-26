@@ -58,7 +58,7 @@ class NativeModelClient:
             messages=assessment_messages(turn) if assessment else tutor_messages(turn),
             usage_recorder=self.usage_recorder,
             model=self.model,
-            tool_executor=None if assessment else tool_executor,
+            tool_executor=None if assessment or turn.recall_publication_version else tool_executor,
             observability=observability or Observability(),
             emit=emit,
             tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),

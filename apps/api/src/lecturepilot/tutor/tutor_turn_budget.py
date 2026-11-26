@@ -18,7 +18,7 @@ CHAT_OUTPUT_TOKEN_LIMIT = 4_096
 WRITING_MAX_TOKENS = 8_192
 WRITING_OUTPUT_TOKEN_LIMIT = 12_288
 
-TutorTurnKind = Literal["assessment", "chat", "canvas_write"]
+TutorTurnKind = Literal["assessment", "chat", "canvas_write", "recall"]
 
 _WRITE_VERB = (
     r"append|add|create|generate|write|make|draw|sketch|build|produce|insert|extend|expand"
@@ -45,6 +45,7 @@ class TutorTurnBudget:
     kind: TutorTurnKind
     max_tokens: int
     output_tokens_limit: int
+    request_limit: int = TUTOR_REQUEST_LIMIT
 
 
 def tutor_turn_budget(turn: AgentTurnInput, *, tools: bool) -> TutorTurnBudget:
@@ -53,6 +54,8 @@ def tutor_turn_budget(turn: AgentTurnInput, *, tools: bool) -> TutorTurnBudget:
     The latest learner message, or a write offer in the previous assistant reply that the
     learner is now accepting, selects writing. A false positive only raises an upper bound.
     """
+    if turn.recall_publication_version:
+        return TutorTurnBudget("recall", 1024, 1024, request_limit=1)
     if not tools:
         return TutorTurnBudget("assessment", ASSESSMENT_MAX_TOKENS, CHAT_OUTPUT_TOKEN_LIMIT)
     if canvas_write_requested(turn):

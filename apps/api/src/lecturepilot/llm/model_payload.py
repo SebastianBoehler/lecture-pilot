@@ -21,6 +21,7 @@ from lecturepilot.core.models import (
 from lecturepilot.tutor.provider_turn_result import (
     ProviderAgentTurnResult,
     ProviderQualityGateDecision,
+    ProviderRecallResult,
 )
 from lecturepilot.llm.providers import ProviderConfigurationError
 
@@ -32,6 +33,9 @@ def agent_result_from_content(
 ) -> AgentTurnResult:
     payload = parse_model_payload(content)
     try:
+        if turn.recall_publication_version:
+            recall = ProviderRecallResult.model_validate(payload)
+            return AgentTurnResult(message=recall.message.strip(), model=model)
         provider_result = ProviderAgentTurnResult.model_validate(payload)
     except ValidationError as exc:
         raise ProviderConfigurationError(

@@ -19,6 +19,8 @@ import { scrollToCanvasAnchor } from "../canvas/canvasNavigation";
 import type { LearnerQuizAnswerResult } from "../shared/analyticsApi";
 import type { TutorMessageOptions } from "../canvas/canvasLearningActions";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
+import { getRecallTarget } from "./recallTarget";
+import { LessonInkPair } from "./LessonInkPair";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { LessonToolbar } from "./LessonToolbar";
@@ -77,7 +79,7 @@ export function LessonWorkspace({
   previewMode?: boolean;
   draftMode?: boolean;
   workspaceMode?: LearnerWorkspaceMode;
-  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<string | void>;
   onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
@@ -125,6 +127,12 @@ export function LessonWorkspace({
     onPracticeSubmitted,
     onSendMessage,
   });
+  const inkLecture = { courseId, lectureId: lecture.id, session };
+  const recallTarget =
+    previewMode || draftMode
+      ? undefined
+      : getRecallTarget(inkLecture, publishedCanvasView, focusedSectionId, activeAnchorId);
+  const [annotationRevision, setAnnotationRevision] = useState(0);
   const canvasLearnerState = reconcileCanvasLearnerState(publishedCanvasView, support.state);
 
   useEffect(() => {
@@ -217,7 +225,7 @@ export function LessonWorkspace({
               lectureId={lecture.id}
               session={session}
               mode={workspaceMode}
-              revision={navigationVersion}
+              revision={navigationVersion + annotationRevision}
             >
               <LessonPredictions
                 courseId={courseId}
@@ -264,10 +272,16 @@ export function LessonWorkspace({
           </LessonControlRail>
         ) : null}
 
+        {!focused && !previewMode && !draftMode && publishedCanvasView ? (
+          <LessonInkPair lecture={inkLecture} />
+        ) : null}
         {!focused && panelMode === "chat" ? (
           <TutorDrawer
+            key={JSON.stringify([courseId, lecture.id, workspaceMode])}
             readOnlyNotice={draftMode ? t("lesson.draftTutor") : undefined}
             messages={messages}
+            recallTarget={recallTarget}
+            onRecallSaved={() => setAnnotationRevision((revision) => revision + 1)}
             model={tutorModel}
             sessionGoal={canvasLearnerState.currentLearnerState?.active_session_goal ?? null}
             onClose={() => onTogglePanel("chat")}

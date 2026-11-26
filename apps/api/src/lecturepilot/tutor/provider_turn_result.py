@@ -51,6 +51,12 @@ class ProviderQualityGateDecision(BaseModel):
     evidence_quotes: list[CriterionQuote] = Field(default_factory=list, max_length=40)
 
 
+class ProviderRecallResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    message: str = Field(min_length=1, max_length=2000, pattern=r"\S")
+
+
 class ProviderAgentTurnResult(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
